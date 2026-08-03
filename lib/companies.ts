@@ -1,0 +1,45 @@
+/**
+ * 회사 API 호출. 화면은 이 함수들만 부르고 경로·쿼리 조립은 여기서 끝낸다.
+ * 새 엔드포인트를 붙일 때도 같은 모양(타입 명시 + 한 줄 주석)으로 늘린다.
+ */
+
+import { api } from "@/lib/api";
+import type {
+  CompanyPublicResponse,
+  CompanySearchQuery,
+  CompanySubscriptionResponse,
+  CompanySummary,
+  PageResponse,
+} from "@/types/api";
+
+/** 공개 목록/검색. 익명도 호출 가능(로그인 상태면 카드에 likedByMe/favoritedByMe 가 채워진다). */
+export function searchCompanies(query: CompanySearchQuery = {}, signal?: AbortSignal) {
+  return api.get<PageResponse<CompanySummary>>("/companies", { ...query }, signal);
+}
+
+/** 공개 상세. 비공개·삭제된 회사는 404. */
+export function getCompany(id: number, signal?: AbortSignal) {
+  return api.get<CompanyPublicResponse>(`/companies/${id}`, undefined, signal);
+}
+
+/** 내가 등록한 회사(최신순). 로그인 필요. */
+export function getMyCompanies(page = 1, size = 20, signal?: AbortSignal) {
+  return api.get<PageResponse<CompanySummary>>("/companies/my", { page, size }, signal);
+}
+
+/** 내 즐겨찾기(담은 최신순). 로그인 필요. */
+export function getMyFavorites(page = 1, size = 20, signal?: AbortSignal) {
+  return api.get<PageResponse<CompanySummary>>("/companies/favorites", { page, size }, signal);
+}
+
+/** 소유자 전용 구독 조회. 등급 표시는 grade 가 아니라 effectiveGrade 를 쓴다. */
+export function getSubscription(companyId: number, signal?: AbortSignal) {
+  return api.get<CompanySubscriptionResponse>(`/companies/${companyId}/subscription`, undefined, signal);
+}
+
+// 좋아요·즐겨찾기는 토글이 아니라 등록(PUT)/해제(DELETE)로 나뉜 멱등 API 다.
+// 응답은 항상 204 — 이미 그 상태여도 성공이므로 중복 클릭을 따로 막을 필요가 없다.
+export const like = (companyId: number) => api.put<void>(`/companies/${companyId}/like`);
+export const unlike = (companyId: number) => api.delete<void>(`/companies/${companyId}/like`);
+export const favorite = (companyId: number) => api.put<void>(`/companies/${companyId}/favorite`);
+export const unfavorite = (companyId: number) => api.delete<void>(`/companies/${companyId}/favorite`);

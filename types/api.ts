@@ -1,0 +1,283 @@
+/**
+ * 백엔드 DTO 대응 타입. 백엔드가 정본이고 이 파일은 사본이다 —
+ * 응답이 예상과 다르면 여기를 고치기 전에 ../plantly 의 record 를 먼저 확인한다.
+ */
+
+// ===== 공통 봉투 =====
+
+/** 모든 API 응답의 겉포장. null 필드는 JSON 에서 아예 빠진다(@JsonInclude NON_NULL). */
+export type ApiResponse<T> = {
+  success: boolean;
+  message?: string;
+  data?: T;
+  error?: string;
+};
+
+/** page 는 1-based. 요청도 ?page=1 이 첫 페이지다. */
+export type PageInfo = {
+  pageNumber: number;
+  size: number;
+  totalElement: number;
+  totalPage: number;
+};
+
+export type PageResponse<T> = {
+  content: T[];
+  pageInfo: PageInfo;
+};
+
+export type IdResponse = { id: number };
+
+// ===== enum (백엔드 enum 이름 그대로 문자열로 내려온다) =====
+
+export type CompanyGrade = "FREE" | "BASIC" | "STANDARD" | "PREMIUM" | "ENTERPRISE";
+export type SubscriptionStatus = "ACTIVE" | "TRIAL" | "ADMIN_EXEMPT";
+export type CompanyVisibility = "PUBLIC" | "PRIVATE";
+export type RegistrationSource = "USER" | "ADMIN";
+export type TrlLevel = "PROTOTYPE" | "MASS_PRODUCTION" | "GLOBAL_STANDARD";
+export type PricingType = "FIXED" | "CONSULTATION" | "PROJECT_BASED";
+export type ImageType = "DETAIL" | "PROJECT";
+export type CertificationType = "MANAGEMENT_SYSTEM" | "INDUSTRY_SPECIFIC" | "MARKET_ACCESS";
+export type RegionLevel = "NATION" | "SIDO" | "SIGUNGU";
+export type Continent =
+  | "ASIA" | "EUROPE" | "AFRICA" | "NORTH_AMERICA" | "SOUTH_AMERICA" | "OCEANIA" | "ANTARCTICA";
+export type UserStatus = "ACTIVE" | "SUSPENDED" | "WITHDRAWN";
+export type UserRole = "ADMIN" | "MEMBER";
+
+// ===== 인증 =====
+
+export type LoginRequest = {
+  email: string;
+  /** 최소 10자, 특수문자 1개 이상 (백엔드 @Pattern) */
+  password: string;
+  /** true 면 30일 remember-me 쿠키 발급 */
+  remember: boolean;
+};
+
+export type LoginResponse = {
+  id: number;
+  email: string;
+  name: string;
+  userStatus: UserStatus;
+};
+
+export type ProfileResponse = {
+  email: string;
+  name: string;
+  nickname: string;
+  phone: string;
+  userStatus: UserStatus;
+  createdAt: string; // ISO-8601 LocalDateTime
+};
+
+// ===== 회사 카드(목록/검색 결과 1건) =====
+
+export type CompanySummary = {
+  id: number;
+  companyName: string;
+  introTitle: string | null;
+  logoUrl: string | null;
+  /** 카드에는 도로명 주소만 내려온다(상세 주소·지번 제외) */
+  address: string | null;
+  /** 관리자 검수 배지 */
+  verified: boolean;
+  featured: boolean;
+  spotlight: boolean;
+  categoryNames: string[];
+  tagNames: string[];
+  industryNames: string[];
+  /** 로그인 뷰어 기준. 익명이면 항상 false */
+  likedByMe: boolean;
+  favoritedByMe: boolean;
+};
+
+/** GET /api/v1/companies 쿼리. 전부 선택 — 없으면 그 조건이 빠진다(전체 브라우즈). */
+export type CompanySearchQuery = {
+  /** 통합 검색어. 회사명·소개·태그·장비명 등 도큐먼트 전체를 훑는다 */
+  keyword?: string;
+  // 고급검색: 지정한 필드에만 부분일치
+  companyName?: string;
+  introTitle?: string;
+  content?: string;
+  ceoName?: string;
+  address?: string;
+  detailAddress?: string;
+  reference?: string;
+  equipment?: string;
+  material?: string;
+  // 패싯: 차원 안에서는 OR. 카테고리는 후손 서브트리까지 잡힌다.
+  // 인증만 예외 — type(경영시스템/산업특화/시장진입) 안에서는 OR, type 끼리는 AND.
+  certificationIds?: number[];
+  industryIds?: number[];
+  categoryIds?: number[];
+  /** 1-based. 기본 20, 최대 100 */
+  page?: number;
+  size?: number;
+};
+
+// ===== 회사 상세(공개) =====
+
+export type ContactResponse = {
+  contactName: string;
+  position: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
+export type GalleryImageResponse = {
+  imageUrl: string;
+  imageType: ImageType;
+  displayOrder: number;
+};
+
+export type ProjectReferenceResponse = {
+  projectTitle: string;
+  achievements: string | null;
+  partners: string | null;
+  period: string | null;
+  thumbnailUrl: string | null;
+};
+
+export type CategoryRef = {
+  id: number;
+  categoryName: string;
+  slug: string;
+  depth: number;
+  iconUrl: string | null;
+};
+
+export type CertificationRef = {
+  id: number;
+  certificationName: string;
+  type: CertificationType;
+};
+
+export type CountryRef = {
+  id: number;
+  /** ISO alpha-2. 국기 아이콘 렌더에 쓴다 */
+  code: string;
+  nameKo: string;
+  nameEn: string;
+  continent: Continent;
+};
+
+export type RegionRef = {
+  id: number;
+  code: string;
+  name: string;
+  /** 화면에 그대로 쓰는 완성형 표기("경기 전역" / "경기 오산") */
+  displayName: string;
+  level: RegionLevel;
+};
+
+export type IndustryRef = {
+  id: number;
+  industryName: string;
+  slug: string;
+  iconUrl: string | null;
+};
+
+/** GET /api/v1/companies/{id} — 누구에게 보여도 안전한 필드만. 사업자번호·소유정보는 없다. */
+export type CompanyPublicResponse = {
+  id: number;
+  companyName: string;
+  ceoName: string;
+  establishmentDate: string; // yyyy-MM-dd
+  postalCode: string | null;
+  roadAddress: string | null;
+  jibunAddress: string | null;
+  detailAddress: string | null;
+  website: string | null;
+  logoUrl: string | null;
+  introTitle: string | null;
+  content: string | null;
+  trlLevel: TrlLevel | null;
+  videoUrl: string | null;
+  leadTime: string | null;
+  asInfo: string | null;
+  pricingType: PricingType | null;
+  brandColor: string | null;
+
+  /** 에디터 선정 큐레이션 배지 */
+  verified: boolean;
+  /** 국세청 사업자 확인 배지 — verified 와 다른 축이라 따로 그린다 */
+  businessVerified: boolean;
+  featured: boolean;
+  spotlight: boolean;
+
+  likedByMe: boolean;
+  favoritedByMe: boolean;
+
+  /** 대표 1건만. 없으면 null */
+  representativeContact: ContactResponse | null;
+  galleryImages: GalleryImageResponse[];
+  representativeReference: ProjectReferenceResponse | null;
+  materialNames: string[];
+  equipmentNames: string[];
+  tagNames: string[];
+  categories: CategoryRef[];
+  certifications: CertificationRef[];
+  countries: CountryRef[];
+  regions: RegionRef[];
+  industries: IndustryRef[];
+};
+
+/** GET /api/v1/companies/{id}/subscription — 소유자 전용 */
+export type CompanySubscriptionResponse = {
+  companyId: number;
+  companyName: string;
+  /** 계약(저장)된 등급 */
+  grade: CompanyGrade;
+  /** 만료·체험을 반영해 서버가 파생한 실제 유효 등급. 화면의 등급 표시·한도 안내는 이 값을 쓴다 */
+  effectiveGrade: CompanyGrade;
+  status: SubscriptionStatus;
+  startedAt: string; // yyyy-MM-dd
+  /** null = 무기한(만료 없음) */
+  expiresAt: string | null;
+};
+
+// ===== 옵션(마스터) =====
+
+/** GET /api/v1/categories — 트리(children 재귀, depth 1~3) */
+export type CategoryPublicResponse = {
+  id: number;
+  categoryName: string;
+  slug: string;
+  depth: number;
+  iconUrl: string | null;
+  children: CategoryPublicResponse[];
+};
+
+/** GET /api/v1/industries */
+export type IndustryPublicResponse = {
+  id: number;
+  industryName: string;
+  slug: string;
+  iconUrl: string | null;
+};
+
+/** GET /api/v1/certifications — type 별로 프론트가 드롭다운을 나눈다 */
+export type CertificationPublicResponse = {
+  id: number;
+  certificationName: string;
+  slug: string;
+  type: CertificationType;
+};
+
+/** GET /api/v1/countries — 250건 평면. 대륙 그룹핑은 프론트가 continent 로 묶는다 */
+export type CountryPublicResponse = {
+  id: number;
+  code: string;
+  nameKo: string;
+  nameEn: string;
+  continent: Continent;
+};
+
+/** GET /api/v1/domestic-regions — 전국/시도/시군구 트리. 자식은 가나다순으로 이미 정렬돼 있다 */
+export type DomesticRegionPublicResponse = {
+  id: number;
+  shortName: string;
+  displayName: string;
+  level: RegionLevel;
+  children: DomesticRegionPublicResponse[];
+};
