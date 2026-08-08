@@ -1,26 +1,476 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * 디자인 토큰. 색은 여기서만 정의하고 화면 코드는 이름으로만 쓴다(bg-brand, text-muted …).
+ * 나중에 디자인을 다듬을 때 이 블록의 값만 바꾸면 전체가 따라온다.
+ *
+ * 값은 Claude Design 의 "플랜틀리 메인 화면 확정 4a" 에서 가져왔다.
+ * accent 램프(100~900)는 한 스케일 위에서 만들어져 같은 단계끼리 밝기가 맞는다 —
+ * 900(#0b2148)은 스포트라이트 카드의 남색 배경이기도 하다.
+ */
+@theme {
+  --color-brand: #0062f5;
+  --color-brand-hover: #0055d6; /* = brand-600 */
+  --color-brand-soft: #eaf1ff; /* = brand-100. 배지·선택 상태 배경 */
+
+  --color-brand-100: #eaf1ff;
+  --color-brand-200: #cfe0ff;
+  --color-brand-300: #a6c5ff;
+  --color-brand-400: #6f9dfb;
+  --color-brand-500: #2f79f8;
+  --color-brand-600: #0055d6;
+  --color-brand-700: #0044ab;
+  --color-brand-800: #093070;
+  --color-brand-900: #0b2148;
+
+  --color-ink: #1d1f20; /* 본문 기본 글자색 */
+  --color-muted: #616161; /* 설명·보조 텍스트 */
+  --color-faint: #949494; /* 라벨·캡션처럼 더 약한 텍스트 */
+  --color-line: #dbdbdb; /* 카드 테두리 */
+  --color-line-soft: #e8e8e8; /* 카드 안쪽 구분선 */
+  --color-page: #f2f2f3; /* 흰 컨테이너 바깥의 바탕 */
 }
 
+/*
+ * 폰트는 next/font 가 만들어 준 CSS 변수를 가리키므로 inline 블록에 둔다
+ * (@theme 은 값을 정적으로 굳히지만 @theme inline 은 var() 참조를 그대로 남긴다).
+ *
+ * Barlow / Barlow Condensed 에는 한글 글리프가 없어서 한글은 뒤의 시스템 폰트로 떨어진다.
+ * 디자인 원본도 같은 방식(라틴은 Barlow, 한글은 Noto Sans KR)이라 결과가 어긋나지 않는다.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-body:
+    var(--font-barlow), "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-heading:
+    var(--font-barlow-condensed), "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui,
+    sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+  }
+
+  /* 디자인 시스템 기본값 — 제목은 전부 헤딩 폰트. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/*
+ * 디자인 시스템 컴포넌트. Tailwind 유틸리티가 이겨야 하므로 components 레이어에 둔다.
+ * 여기 규칙은 "이 디자인의 어휘"고, 배치·간격은 화면 코드에서 Tailwind 로 준다.
+ */
+@layer components {
+  /* ── 청사진 프레임 ─────────────────────────────────────────────
+     헤어라인 테두리 + 12px 라운드. position:relative 는 카드 아래로 펼쳐지는
+     .tagoverflow 의 기준이라 장식이 아니라 구조다.
+     (원본 디자인에는 상자 바깥으로 나오는 모서리 등록 마크와 히어로의 방안지 격자가 있었는데,
+      요청으로 뺐다 — 되살리려면 Claude Design 의 .corner / .plate 규칙을 다시 가져온다.) */
+  .blueprint {
+    position: relative;
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+  }
+
+  /* ── 버튼 ──────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.2;
+    color: var(--color-ink);
+    background: transparent;
+    border: 1px solid var(--color-line);
+    padding: 7px 12px;
+    border-radius: 8px;
+  }
+  .btn svg {
+    display: block;
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+    color: #fff;
+  }
+  .btn-primary:not(:disabled):hover {
+    background: var(--color-brand-hover);
+    border-color: var(--color-brand-hover);
+  }
+  .btn-secondary:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-ink) 7%, transparent);
+  }
+
+  /* 아이콘 버튼(좋아요·즐겨찾기). .on 이 붙으면 켜진 상태. */
+  .icbtn {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+  .icbtn:not(:disabled):hover {
+    color: var(--color-brand);
+    border-color: var(--color-brand);
+  }
+  .icbtn.on {
+    color: var(--color-brand);
+    border-color: var(--color-brand);
+  }
+  /* 남색 카드 위에서는 흰 계열로 뒤집는다. */
+  .icbtn-dark {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: #fff;
+  }
+  .icbtn-dark:not(:disabled):hover,
+  .icbtn-dark.on {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  /* ── 칩(인기 검색어·소분류) ───────────────────────────────── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: #fff;
+    font-size: 12.5px;
+    color: var(--color-muted);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .chip:hover {
+    border-color: var(--color-brand);
+    color: var(--color-brand-700);
+    background: var(--color-brand-100);
+  }
+  .chip.on {
+    border-color: var(--color-brand);
+    background: var(--color-brand);
+    color: #fff;
+  }
+
+  /* ── 태그 ──────────────────────────────────────────────────
+     tag-accent = 자유 태그(#…), tagcat = 정식 카테고리(# 없음, 아웃라인) */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .tag-accent {
+    background: var(--color-brand-100);
+    color: var(--color-brand-800);
+  }
+  .tag-neutral {
+    background: #f2f2f4;
+    color: #424244;
+  }
+  .tagcat {
+    background: #fff;
+    border-color: var(--color-brand-400);
+    color: var(--color-brand-800);
+    font-weight: 500;
+  }
+  .tag-dark {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--color-brand-200);
+  }
+  .tagcat-dark {
+    background: transparent;
+    border-color: rgba(166, 197, 255, 0.6);
+    color: var(--color-brand-200);
+    font-weight: 500;
+  }
+
+  /* 업종 라벨 — 배지가 아니라 주소 줄 앞에 붙는 아웃라인 라벨이다. */
+  .ind {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-heading);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    color: var(--color-brand-700);
+    border: 1px solid rgba(0, 98, 245, 0.32);
+    border-radius: 4px;
+    padding: 1px 7px;
+  }
+
+  /* ── 회사 카드 ─────────────────────────────────────────────── */
+  .pcard {
+    background: #fff;
+    transition:
+      box-shadow 0.16s,
+      border-color 0.16s,
+      transform 0.16s;
+  }
+  .pcard:hover {
+    border-color: var(--color-brand);
+    box-shadow: 0 6px 22px rgba(11, 33, 72, 0.13);
+    transform: translateY(-2px);
+    z-index: 5;
+  }
+
+  /* ── 스포트라이트 카드 ─────────────────────────────────────────
+   *
+   * 배경이 회사가 지정한 색(brandColor)이라 카드 안 모든 색이 그 위에서 읽혀야 한다.
+   * 그래서 이 카드만은 팔레트 토큰을 직접 쓰지 않고 전경색 변수 --sl-fg 에서 파생시킨다 —
+   * 남색 전용으로 굳힌 값(brand-200/300 같은 밝은 파랑)을 앰버·자주 배경에 얹으면 그대로 깨진다.
+   *
+   *   --sl-bg : 카드 배경. 기본은 남색이고, 회사가 색을 지정했으면 컴포넌트가 인라인으로 덮어쓴다
+   *             (런타임 데이터라 토큰으로 만들 수 없는 유일한 값)
+   *   --sl-fg : 그 배경 위에서 읽히는 글자색. 휘도 판정(lib/color.ts)이 data-tone 을 정하고
+   *             실제 색은 여기서 고른다
+   */
+  .spotlight {
+    --sl-bg: var(--color-brand-900);
+    --sl-fg: #fff;
+    background: var(--sl-bg);
+    border-color: var(--sl-bg);
+    color: var(--sl-fg);
+  }
+  /* 밝은 배경(노랑·연회색 등)에서는 글자를 뒤집는다. */
+  .spotlight[data-tone="light"] {
+    --sl-fg: var(--color-ink);
+  }
+  /*
+   * hover 테두리도 전경색에서 뽑는다. .pcard:hover 의 브랜드 파랑을 그대로 두면 앰버·자주 카드
+   * 가장자리에서만 파란 테가 돌아 카드가 깨져 보인다. (같은 특정도라 이 블록이 뒤에 와야 이긴다)
+   */
+  .spotlight:hover {
+    border-color: color-mix(in srgb, var(--sl-fg) 45%, var(--sl-bg));
+  }
+
+  /* 회차 표시(SPOTLIGHT 01)와 그 옆으로 뻗는 가는 선. */
+  .sl-kicker {
+    color: color-mix(in srgb, var(--sl-fg) 74%, transparent);
+  }
+  .sl-rule {
+    background: color-mix(in srgb, var(--sl-fg) 22%, transparent);
+  }
+  /* 업종 라벨 — .ind 의 스포트라이트판(브랜드 파랑 대신 전경색 파생). */
+  .sl-label {
+    border-color: color-mix(in srgb, var(--sl-fg) 45%, transparent);
+    color: color-mix(in srgb, var(--sl-fg) 80%, transparent);
+  }
+  .sl-meta {
+    color: color-mix(in srgb, var(--sl-fg) 62%, transparent);
+  }
+  .sl-body {
+    color: color-mix(in srgb, var(--sl-fg) 88%, transparent);
+  }
+  /*
+   * 상세 보기 버튼. .btn-primary(단색 브랜드 파랑)를 쓰지 않는 이유는 배경이 임의의 색이라
+   * 파란 카드 위 파란 버튼이 나올 수 있어서다. 카드 색을 뒤집으면 어떤 배경에서도 최대 대비가 나온다.
+   */
+  .sl-cta {
+    background: var(--sl-fg);
+    border-color: var(--sl-fg);
+    color: var(--sl-bg);
+  }
+  .sl-cta:not(:disabled):hover {
+    background: color-mix(in srgb, var(--sl-fg) 86%, transparent);
+  }
+
+  /* 커버 사진이 없을 때 그 자리에 까는 해칭. 전경색 알파라 배경색이 무엇이든 같이 간다. */
+  .hatch-tint {
+    background: repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--sl-fg) 11%, transparent) 0 10px,
+      color-mix(in srgb, var(--sl-fg) 4%, transparent) 10px 20px
+    );
+  }
+
+  /*
+   * 카드 안에 들어가는 공용 '어두운 배경용' 변형들을 전경색 파생으로 덮어쓴다.
+   * 원본(.tag-dark 등)은 흰색 알파 + 밝은 파랑으로 굳어 있어 밝은 배경에서 사라진다.
+   */
+  .spotlight .tag-dark {
+    background: color-mix(in srgb, var(--sl-fg) 14%, transparent);
+    color: color-mix(in srgb, var(--sl-fg) 88%, transparent);
+  }
+  .spotlight .tagcat-dark {
+    border-color: color-mix(in srgb, var(--sl-fg) 52%, transparent);
+    color: color-mix(in srgb, var(--sl-fg) 88%, transparent);
+  }
+  .spotlight .icbtn-dark {
+    background: color-mix(in srgb, var(--sl-fg) 10%, transparent);
+    border-color: color-mix(in srgb, var(--sl-fg) 30%, transparent);
+    color: var(--sl-fg);
+  }
+  .spotlight .icbtn-dark:not(:disabled):hover,
+  .spotlight .icbtn-dark.on {
+    background: color-mix(in srgb, var(--sl-fg) 20%, transparent);
+    border-color: color-mix(in srgb, var(--sl-fg) 70%, transparent);
+    color: var(--sl-fg);
+  }
+
+  /*
+   * 자리에 안 들어간 칩은 평소엔 "+N" 하나로 접혀 있다가, 카드에 마우스를 올리면
+   * 바로 뒤에 이어서 펼쳐진다 — 별도 패널이 아니라 같은 줄의 연장이다.
+   * 그만큼 카드가 세로로 커지는데, 격자·레일이 밀리지 않게 자리를 못 박아 두는 건 CardSlot 이다.
+   */
+  .tagmore {
+    display: none;
+  }
+  .pcard:hover .tagmore {
+    display: inline-flex;
+  }
+  .pcard:hover .tagcount {
+    display: none;
+  }
+
+  /* ── 카테고리 카드 ─────────────────────────────────────────── */
+  .cat {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px 18px 20px;
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color 0.16s,
+      box-shadow 0.16s,
+      transform 0.16s;
+  }
+  .cat:hover {
+    border-color: var(--color-brand);
+    box-shadow: 0 6px 22px rgba(11, 33, 72, 0.12);
+    transform: translateY(-2px);
+  }
+  .cat.on {
+    border-color: var(--color-brand);
+  }
+
+  /* ── 검색 입력 ─────────────────────────────────────────────── */
+  .srch {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 16px;
+    color: var(--color-ink);
+  }
+  .srch::placeholder {
+    color: var(--color-faint);
+  }
+  /* 검색창 자체에 포커스 링을 그리므로 안쪽 input 의 링은 끈다. */
+  .srch:focus-visible {
+    outline: none;
+  }
+
+  /* ── 가로 레일 ─────────────────────────────────────────────── */
+  .railtrack {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    /* 양 끝을 감을 때 슬라이드를 앞뒤로 끼워 넣는다. 브라우저가 스크롤 앵커링으로
+       자기 나름대로 위치를 보정하면 Rail 의 보정과 겹쳐 어긋나므로 꺼 둔다. */
+    overflow-anchor: none;
+  }
+  .railtrack::-webkit-scrollbar {
+    height: 0;
+  }
+  .railbtn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+    color: var(--color-ink);
+    cursor: pointer;
+    z-index: 6;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+  .railbtn:hover {
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+  }
+  .raildot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-ink) 18%, transparent);
+    cursor: pointer;
+    transform-origin: 50% 50%;
+    transition:
+      transform 0.18s,
+      background 0.18s;
+  }
+  .raildot:hover {
+    background: color-mix(in srgb, var(--color-brand) 45%, transparent);
+  }
+  .raildot.on {
+    background: var(--color-brand);
+    transform: scale(1.5);
+  }
+
+  /* 데이터가 아직 없는 자리를 채우는 회색 막대 */
+  .skel {
+    background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+    border-radius: 3px;
+  }
+  /* 이미지가 없는 카드의 커버 자리 — 사선 해칭 */
+  .hatch {
+    background: repeating-linear-gradient(135deg, #e7eefc 0 10px, #eff4fd 10px 20px);
+  }
+  .hatch-empty {
+    background: repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-ink) 3%, transparent) 0 10px,
+      transparent 10px 20px
+    );
+  }
 }

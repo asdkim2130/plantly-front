@@ -77,6 +77,13 @@ export type CompanySummary = {
   companyName: string;
   introTitle: string | null;
   logoUrl: string | null;
+  /**
+   * 카드 커버 사진. 로고와 다른 자리다 — 로고는 정사각 배지, 커버는 카드 배경에 깔리는 와이드 사진.
+   * 스포트라이트(거의 정사각)와 추천 카드(가로로 긴 띠)가 같은 이미지를 다른 비율로 자른다(object-cover).
+   */
+  coverImageUrl: string | null;
+  /** 스포트라이트 카드 배경색 (#RRGGBB). 없으면 기본 남색으로 떨어진다 */
+  brandColor: string | null;
   /** 카드에는 도로명 주소만 내려온다(상세 주소·지번 제외) */
   address: string | null;
   /** 관리자 검수 배지 */
@@ -189,6 +196,8 @@ export type CompanyPublicResponse = {
   detailAddress: string | null;
   website: string | null;
   logoUrl: string | null;
+  /** 상세에서는 히어로 배경. 갤러리(galleryImages)와는 별개의 값이다 */
+  coverImageUrl: string | null;
   introTitle: string | null;
   content: string | null;
   trlLevel: TrlLevel | null;
