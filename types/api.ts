@@ -98,6 +98,20 @@ export type CompanySummary = {
   favoritedByMe: boolean;
 };
 
+/**
+ * GET /api/v1/companies/showcase — 메인 화면 노출 영역.
+ *
+ * 페이지가 아니라 **자리 수만큼의 고정 리스트**라 `pageInfo` 가 없다. 몇 칸인지는 서버 설정이므로
+ * 프론트가 개수를 가정하지 않는다 — 받은 만큼 그린다.
+ *
+ * 두 레일에 같은 회사가 함께 나올 수 있다(관리자 고정 + 추천). 각 영역이 독립적으로 의미를 갖는
+ * 노출이라 의도된 동작이고, **프론트에서 중복을 제거하지 않는다.**
+ */
+export type CompanyShowcaseResponse = {
+  spotlight: CompanySummary[];
+  featured: CompanySummary[];
+};
+
 /** GET /api/v1/companies 쿼리. 전부 선택 — 없으면 그 조건이 빠진다(전체 브라우즈). */
 export type CompanySearchQuery = {
   /** 통합 검색어. 회사명·소개·태그·장비명 등 도큐먼트 전체를 훑는다 */

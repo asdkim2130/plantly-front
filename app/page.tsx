@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import CategoryCards from "@/components/CategoryCards";
 import CompanyCard from "@/components/CompanyCard";
 import FeaturedCard from "@/components/FeaturedCard";
@@ -15,10 +15,11 @@ import SpotlightCard from "@/components/SpotlightCard";
 import StatsPanel from "@/components/StatsPanel";
 import { FilterIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
-import { searchCompanies } from "@/lib/companies";
+import { getShowcase, searchCompanies } from "@/lib/companies";
 import { flattenCategories, getCategories, getCertifications, getIndustries } from "@/lib/options";
 import type {
   CategoryPublicResponse,
+  CompanyShowcaseResponse,
   CompanySummary,
   IndustryPublicResponse,
   PageInfo,
@@ -28,16 +29,12 @@ import type {
 const PAGE_SIZE = 12;
 
 /**
- * 스포트라이트·추천을 고르기 위해 한 번에 받아 두는 풀 크기(size 상한이 100이다).
+ * 스포트라이트 레일이 무너지지 않게 지키는 **최소** 칸 수.
  *
- * 백엔드에 "spotlight 만" / "featured 만" 뽑는 파라미터가 없어서, 첫 100건을 받아
- * 플래그로 걸러 쓴다. 뒤쪽 페이지에만 있는 추천 기업은 레일에 안 잡힐 수 있다 —
- * 목록 API 에 필터가 생기면 이 우회는 지운다.
+ * 실제 노출 자리 수는 서버 설정(`app.showcase.spotlight-slots`)이고 프론트는 받은 만큼 그린다 —
+ * 이 값은 받은 게 그보다 적을 때 "데이터 준비 중" 자리표시자로 메워 레일 높이를 유지하는 바닥값이다.
  */
-const HIGHLIGHT_POOL = 100;
-
-const SPOTLIGHT_SLOTS = 3;
-const FEATURED_SLOTS = 8; // 레일이 2줄 격자라 짝수로 채운다
+const SPOTLIGHT_MIN_SLIDES = 3;
 
 type Request = {
   keyword: string;
@@ -89,31 +86,40 @@ export default function HomePage() {
     return () => controller.abort();
   }, []);
 
-  // ── 스포트라이트 / 추천 풀 ───────────────────────────────────────────────
-  const [pool, setPool] = useState<CompanySummary[] | null>(null);
+  // ── 스포트라이트 / 추천 레일 ─────────────────────────────────────────────
+  // 어느 회사가 어느 자리를 차지하는지는 서버가 정한다. 목록을 받아 플래그로 거르면 안 되는데,
+  // 요금제 자격으로 노출되는 회사는 spotlight 플래그가 false 라 걸러지지 않고(자격은 구독에서
+  // 조회 시점에 파생된다) 후보가 자리보다 많을 때 누가 잘리는지도 프론트가 알 수 없어서다.
+  const [showcase, setShowcase] = useState<CompanyShowcaseResponse | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getShowcase(controller.signal)
+      // 레일을 못 받아도 아래 목록은 보여야 한다 — 빈 레일로 두면 자리표시자가 그려진다.
+      .then(setShowcase)
+      .catch(() => setShowcase({ spotlight: [], featured: [] }));
+    return () => controller.abort();
+  }, []);
+
+  // 두 레일에 같은 회사가 겹쳐 나올 수 있고, 그건 의도된 동작이라 중복을 제거하지 않는다
+  // (관리자 고정 + 추천은 각각 독립적인 노출이다).
+  const spotlights = showcase?.spotlight ?? [];
+  const featured = showcase?.featured ?? [];
+
+  // ── 전체 등록 기업 수(히어로·현황) ───────────────────────────────────────
+  // 아래 목록 요청의 totalElement 를 재활용하지 않는다 — 검색·필터가 걸리면 그건 걸러진 수라
+  // 히어로의 "N COMPANIES" 가 조건에 따라 출렁인다. 조건 없는 1건짜리 요청으로 따로 센다.
   const [totalCompanies, setTotalCompanies] = useState<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    searchCompanies({ page: 1, size: HIGHLIGHT_POOL }, controller.signal)
-      .then((result) => {
-        setPool(result.content);
-        setTotalCompanies(result.pageInfo.totalElement);
-      })
-      .catch(() => setPool([]));
+    searchCompanies({ page: 1, size: 1 }, controller.signal)
+      .then((result) => setTotalCompanies(result.pageInfo.totalElement))
+      .catch(() => {
+        // 숫자 하나 못 받은 것뿐이다. 자리는 비워 두고 화면은 그대로 간다.
+      });
     return () => controller.abort();
   }, []);
-
-  const spotlights = useMemo(
-    () => (pool ?? []).filter((c) => c.spotlight).slice(0, SPOTLIGHT_SLOTS),
-    [pool],
-  );
-  const featured = useMemo(() => {
-    const onSpotlight = new Set(spotlights.map((c) => c.id));
-    return (pool ?? [])
-      .filter((c) => c.featured && !onSpotlight.has(c.id))
-      .slice(0, FEATURED_SLOTS);
-  }, [pool, spotlights]);
 
   // ── 전체 기업 목록 ───────────────────────────────────────────────────────
   const [request, setRequest] = useState<Request>({
@@ -254,7 +260,7 @@ export default function HomePage() {
                   </div>
                 ))}
                 {Array.from(
-                  { length: Math.max(0, SPOTLIGHT_SLOTS - spotlights.length) },
+                  { length: Math.max(0, SPOTLIGHT_MIN_SLIDES - spotlights.length) },
                   (_, i) => (
                     <div key={`ph-${i}`} className="w-full shrink-0">
                       <SpotlightPlaceholder index={spotlights.length + i + 1} />
@@ -288,7 +294,7 @@ export default function HomePage() {
                   <FeaturedCard key={company.id} company={company} onError={setNotice} />
                 ))}
                 {Array.from(
-                  { length: fillTo(featured.length, 2, pool === null ? 4 : 0) },
+                  { length: fillTo(featured.length, 2, showcase === null ? 4 : 0) },
                   (_, i) => (
                     <FeaturedPlaceholder key={`ph-${i}`} />
                   ),

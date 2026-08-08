@@ -76,6 +76,7 @@ npm run dev        # http://localhost:3000
 | 경로 | 설명 |
 | --- | --- |
 | `GET /api/v1/companies` | 목록/검색. 통합 `keyword` + 고급검색 필드 + 패싯(`categoryIds`/`industryIds`/`certificationIds`) |
+| `GET /api/v1/companies/showcase` | 메인 노출 영역. `{ spotlight[], featured[] }` — 페이지 아님(`pageInfo` 없음) |
 | `GET /api/v1/companies/{id}` | 공개 상세 |
 | `GET /api/v1/categories` | 카테고리 트리(`children` 재귀, depth 1~3) |
 | `GET /api/v1/industries`, `GET /api/v1/certifications` | 검색 패싯 선택지 |
@@ -255,8 +256,10 @@ public/plantly-logo.png  헤더 로고 (디자인 프로젝트의 uploads/logo-t
 | "지역 · 업종 필터" | 업종만. 검색 쿼리의 패싯은 category/industry/certification 셋뿐이다 |
 | 카드 하단 "기업 상세 →" | 분류 이름. 상세 라우트가 아직 없다 |
 
-- **스포트라이트·추천은 목록 첫 100건에서 플래그로 걸러 쓴다.** `spotlight`/`featured` 만 뽑는
-  파라미터가 없어서다(`app/page.tsx` 의 `HIGHLIGHT_POOL`). 뒤쪽 페이지에만 있는 추천 기업은 레일에 안 잡힌다.
+- **스포트라이트·추천은 목록을 걸러서 만들지 않는다.** 전용 `GET /companies/showcase` 를 쓴다.
+  카드의 `spotlight` 플래그는 "관리자 수동 고정(pin)"이지 "메인에 노출 중"이 아니다 — 요금제 자격으로
+  노출되는 회사는 이 값이 `false` 인 채로 레일에 오른다(자격은 서버가 구독을 보고 조회 시점에 파생한다).
+  자리 수도 서버 설정이라 프론트는 받은 만큼 그린다. 두 레일에 같은 회사가 겹쳐도 **중복 제거하지 않는다.**
 
 ## 아직 안 한 것 (메인 화면 기준)
 
