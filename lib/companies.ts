@@ -19,11 +19,15 @@ export function searchCompanies(query: CompanySearchQuery = {}, signal?: AbortSi
 }
 
 /**
- * 메인 화면 노출 영역(스포트라이트·추천). 익명도 호출 가능.
+ * 메인 화면 노출 영역(스포트라이트·추천·최근 등록). 익명도 호출 가능.
  *
  * 목록을 받아 spotlight/featured 플래그로 걸러내면 안 된다 — 노출 자격은 저장된 플래그가 아니라
  * 서버가 구독을 보고 조회 시점에 파생하고(요금제 자격분은 플래그가 false 다), 후보가 자리보다
  * 많아지면 누가 잘리는지도 서버가 정한다.
+ *
+ * 메인의 기업 데이터는 이 호출 하나로 끝난다. 기본 상태의 격자까지 `latest` 가 담당하므로
+ * 목록 API 는 **검색어·패싯이 걸렸거나 전체 브라우즈로 넘어갔을 때만** 부른다
+ * (그때는 정렬 규칙이 달라지는 게 맞다 — 이유는 `CompanyShowcaseResponse.latest` 주석).
  */
 export function getShowcase(signal?: AbortSignal) {
   return api.get<CompanyShowcaseResponse>("/companies/showcase", undefined, signal);

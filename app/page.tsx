@@ -41,6 +41,13 @@ type Request = {
   categoryId: number | null;
   industryId: number | null;
   page: number;
+  /**
+   * 조건 없이 전체 목록을 훑는 모드. 기본 격자("최근 등록")에서 "전체 기업 보기"를 누르면 켜진다.
+   *
+   * 기본 상태와 이 모드는 보여주는 대상이 겹치지만 **정렬 규칙이 다르다** — 기본은 순수 최신순이고
+   * 전체 브라우즈는 목록 API 라 유료 기업이 상위로 온다. 그래서 같은 화면의 두 상태로 나눠 둔다.
+   */
+  browseAll: boolean;
 };
 
 /** 완료된 목록 요청 1건의 결과. key 가 현재 조건과 다르면 아직 로딩 중이라는 뜻이다. */
@@ -51,13 +58,18 @@ type Listing = {
   error: string;
 };
 
-const keyOf = (r: Request) => `${r.keyword}|${r.categoryId}|${r.industryId}|${r.page}`;
+const keyOf = (r: Request) =>
+  `${r.keyword}|${r.categoryId}|${r.industryId}|${r.page}|${r.browseAll}`;
 
 /**
- * 첫 화면 — 히어로 검색 + 대분류 진입 + 스포트라이트/추천 레일 + 전체 기업 격자.
+ * 첫 화면 — 히어로 검색 + 대분류 진입 + 스포트라이트/추천 레일 + 기업 격자.
  *
  * 인증이 세션 쿠키 기반이라 데이터를 읽는 컴포넌트는 전부 클라이언트다(CLAUDE.md 페칭 규칙).
  * 검색어·필터는 아직 URL 에 싣지 않는다 — 공유 링크가 필요해지면 searchParams 로 옮긴다.
+ *
+ * **기업 데이터의 출처는 조건에 따라 갈린다.** 조건이 없으면 showcase 응답 하나로 세 영역
+ * (스포트라이트·추천·격자)을 전부 채우고 목록 API 를 아예 부르지 않는다. 검색어·패싯이 걸리거나
+ * 전체 브라우즈로 넘어갈 때만 목록 API 를 쓴다 — 자세한 근거는 `CompanyShowcaseResponse.latest` 주석.
  */
 export default function HomePage() {
   const [notice, setNotice] = useState("");
@@ -86,25 +98,28 @@ export default function HomePage() {
     return () => controller.abort();
   }, []);
 
-  // ── 스포트라이트 / 추천 레일 ─────────────────────────────────────────────
-  // 어느 회사가 어느 자리를 차지하는지는 서버가 정한다. 목록을 받아 플래그로 거르면 안 되는데,
-  // 요금제 자격으로 노출되는 회사는 spotlight 플래그가 false 라 걸러지지 않고(자격은 구독에서
-  // 조회 시점에 파생된다) 후보가 자리보다 많을 때 누가 잘리는지도 프론트가 알 수 없어서다.
+  // ── 스포트라이트 / 추천 / 최근 등록 ──────────────────────────────────────
+  // 메인의 기업 데이터는 이 요청 하나가 전부다. 어느 회사가 어느 자리를 차지하는지는 서버가 정한다 —
+  // 목록을 받아 플래그로 거르면 안 되는데, 요금제 자격으로 노출되는 회사는 spotlight 플래그가 false 라
+  // 걸러지지 않고(자격은 구독에서 조회 시점에 파생된다) 후보가 자리보다 많을 때 누가 잘리는지도
+  // 프론트가 알 수 없어서다.
   const [showcase, setShowcase] = useState<CompanyShowcaseResponse | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     getShowcase(controller.signal)
-      // 레일을 못 받아도 아래 목록은 보여야 한다 — 빈 레일로 두면 자리표시자가 그려진다.
+      // 못 받아도 화면은 서야 한다 — 빈 레일로 두면 자리표시자가 그려지고,
+      // 격자는 "전체 기업 보기"로 목록 API 를 통해 여전히 접근할 수 있다.
       .then(setShowcase)
-      .catch(() => setShowcase({ spotlight: [], featured: [] }));
+      .catch(() => setShowcase({ spotlight: [], featured: [], latest: [] }));
     return () => controller.abort();
   }, []);
 
-  // 두 레일에 같은 회사가 겹쳐 나올 수 있고, 그건 의도된 동작이라 중복을 제거하지 않는다
-  // (관리자 고정 + 추천은 각각 독립적인 노출이다).
+  // 레일끼리 같은 회사가 겹쳐 나올 수 있고, 그건 의도된 동작이라 중복을 제거하지 않는다
+  // (관리자 고정 + 추천 + 최근 등록은 각각 독립적인 노출이다).
   const spotlights = showcase?.spotlight ?? [];
   const featured = showcase?.featured ?? [];
+  const latest = showcase?.latest ?? [];
 
   // ── 전체 등록 기업 수(히어로·현황) ───────────────────────────────────────
   // 아래 목록 요청의 totalElement 를 재활용하지 않는다 — 검색·필터가 걸리면 그건 걸러진 수라
@@ -121,14 +136,19 @@ export default function HomePage() {
     return () => controller.abort();
   }, []);
 
-  // ── 전체 기업 목록 ───────────────────────────────────────────────────────
+  // ── 기업 격자 ────────────────────────────────────────────────────────────
   const [request, setRequest] = useState<Request>({
     keyword: "",
     categoryId: null,
     industryId: null,
     page: 1,
+    browseAll: false,
   });
   const [listing, setListing] = useState<Listing | null>(null);
+
+  const filtered = Boolean(request.keyword || request.categoryId || request.industryId);
+  // 목록 API 를 쓰는 상태인지. 아니면 showcase 의 latest 를 그대로 그린다.
+  const usesListApi = filtered || request.browseAll;
 
   const key = keyOf(request);
   const loading = listing?.key !== key;
@@ -139,6 +159,9 @@ export default function HomePage() {
   const error = listing?.error ?? "";
 
   useEffect(() => {
+    // 기본 상태(조건 없음 + 브라우즈 아님)는 showcase 로 이미 채워져 있다 — 목록 API 를 부르지 않는다.
+    if (!usesListApi) return;
+
     const controller = new AbortController();
 
     searchCompanies(
@@ -176,15 +199,26 @@ export default function HomePage() {
       });
 
     return () => controller.abort();
-  }, [key, request]);
+  }, [key, request, usesListApi]);
 
-  /** 조건이 바뀌면 항상 첫 페이지부터 다시 담는다. */
+  /** 조건이 바뀌면 항상 첫 페이지부터 다시 담는다. browseAll 은 별도로만 켜고 끈다. */
   const apply = (patch: Partial<Omit<Request, "page">>) =>
     setRequest((prev) => ({ ...prev, ...patch, page: 1 }));
 
+  /** 조건을 모두 지우고 기본 상태(최근 등록)로 돌아간다. */
+  const resetToLatest = () =>
+    setRequest({ keyword: "", categoryId: null, industryId: null, page: 1, browseAll: false });
+
   const topLevel = categories.filter((c) => c.depth === 1);
-  const filtered = Boolean(request.keyword || request.categoryId || request.industryId);
   const hasMore = pageInfo ? pageInfo.pageNumber < pageInfo.totalPage : false;
+
+  // 격자에 그릴 카드와 로딩 상태는 모드에 따라 출처가 다르다.
+  const cards = usesListApi ? companies : latest;
+  const cardsLoading = usesListApi ? loading && !loadingMore : showcase === null;
+
+  // 기본 상태에서 "전체 기업 보기"를 띄울지. 자리 밖에 더 있는지는 showcase 가 알려주지 않으므로
+  // (공개 기업 전체를 세야 하는 값이라 서버에서 뺐다) 히어로가 이미 받아 둔 총수로 판단한다.
+  const canBrowseMore = totalCompanies === null || totalCompanies > latest.length;
 
   return (
     <>
@@ -214,6 +248,8 @@ export default function HomePage() {
           categoryCount={categories.length ? flattenCategories(categories).length : null}
           industryCount={industries.length || null}
           certificationCount={certificationCount}
+          // 이미 받아 둔 레일을 잘라 쓴다 — "최근 등록" 때문에 요청이 늘지 않는다.
+          recent={showcase ? showcase.latest.slice(0, 3) : null}
         />
       </section>
 
@@ -304,20 +340,38 @@ export default function HomePage() {
           </>
         )}
 
-        {/* ── 전체 기업 ─────────────────────────────────────────────────── */}
+        {/* ── 기업 격자 ─────────────────────────────────────────────────── */}
         <section id="companies" className="flex scroll-mt-4 flex-col gap-[13px]">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-2.5">
-              <h2 className="text-[23px]">{filtered ? "검색 결과" : "전체 기업"}</h2>
+              <h2 className="text-[23px]">
+                {filtered ? "검색 결과" : request.browseAll ? "전체 기업" : "최근 등록 기업"}
+              </h2>
               <span className="text-[12.5px] text-faint">
-                {pageInfo ? (
+                {/*
+                  기본 상태에는 총 개수를 붙이지 않는다. 여기 실린 건 "가장 최근 N개"라 전체 수를
+                  나란히 두면 N개만 받아 놓고 전체 수를 세어 보인 것처럼 읽힌다.
+                */}
+                {usesListApi && pageInfo ? (
                   <>
                     총 <b className="text-brand-700">{pageInfo.totalElement.toLocaleString()}</b>개
                   </>
-                ) : (
+                ) : usesListApi ? (
                   " "
+                ) : (
+                  "가장 최근에 등록된 기업"
                 )}
               </span>
+              {/* 전체 브라우즈로 넘어가면 돌아올 길이 없어진다 — 검색과 달리 지울 조건이 없어서다. */}
+              {request.browseAll && !filtered && (
+                <button
+                  type="button"
+                  className="text-brand-700 text-[12.5px] underline underline-offset-2"
+                  onClick={resetToLatest}
+                >
+                  최근 등록만 보기
+                </button>
+              )}
             </div>
 
             {/*
@@ -368,31 +422,45 @@ export default function HomePage() {
             ))}
           </div>
 
-          {error ? (
+          {usesListApi && error ? (
             <ErrorState
               message={error}
               onRetry={() => setRequest((prev) => ({ ...prev, page: prev.page }))}
             />
-          ) : loading && !loadingMore ? (
+          ) : cardsLoading ? (
             <Grid>
               {Array.from({ length: 6 }, (_, i) => (
                 <CompanyPlaceholder key={i} />
               ))}
             </Grid>
-          ) : companies.length === 0 ? (
-            <EmptyState
-              filtered={filtered}
-              onReset={() => apply({ keyword: "", categoryId: null, industryId: null })}
-            />
+          ) : cards.length === 0 ? (
+            <EmptyState filtered={filtered} onReset={resetToLatest} />
           ) : (
             <Grid>
-              {companies.map((company) => (
+              {cards.map((company) => (
                 <CompanyCard key={company.id} company={company} onError={setNotice} />
               ))}
             </Grid>
           )}
 
-          {hasMore && !error && (
+          {/*
+            기본 상태의 버튼은 "더 담기"가 아니라 **모드 전환**이다. 최근 등록 격자는 자리 수가 고정된
+            레일이라 이어 붙일 다음 페이지가 없고, 전체를 훑는 건 정렬 규칙이 다른 목록 API 의 몫이다.
+            (목록 화면 라우트가 생기면 이 버튼은 그리로 보내는 링크가 된다.)
+          */}
+          {!usesListApi && canBrowseMore && !cardsLoading && cards.length > 0 && (
+            <div className="mt-1.5 flex justify-center">
+              <button
+                type="button"
+                className="btn btn-secondary min-w-[200px]"
+                onClick={() => setRequest((prev) => ({ ...prev, page: 1, browseAll: true }))}
+              >
+                전체 기업 보기
+              </button>
+            </div>
+          )}
+
+          {usesListApi && hasMore && !error && (
             <div className="mt-1.5 flex justify-center">
               <button
                 type="button"
