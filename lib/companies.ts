@@ -8,6 +8,7 @@ import type {
   CompanyPublicResponse,
   CompanySearchQuery,
   CompanyShowcaseResponse,
+  CompanyStatsResponse,
   CompanySubscriptionResponse,
   CompanySummary,
   PageResponse,
@@ -31,6 +32,16 @@ export function searchCompanies(query: CompanySearchQuery = {}, signal?: AbortSi
  */
 export function getShowcase(signal?: AbortSignal) {
   return api.get<CompanyShowcaseResponse>("/companies/showcase", undefined, signal);
+}
+
+/**
+ * 메인 현황 지표(등록 기업·분류·업종·인증 수). 익명도 호출 가능.
+ *
+ * 이 숫자들을 목록 API 나 선택지 목록에서 세지 않는다 — 개수를 알려고 목록을 만들면 데이터가 늘수록
+ * 화면과 무관한 비용이 커지고, 세는 기준이 공개 목록과 갈릴 여지도 생긴다.
+ */
+export function getCompanyStats(signal?: AbortSignal) {
+  return api.get<CompanyStatsResponse>("/companies/stats", undefined, signal);
 }
 
 /** 공개 상세. 비공개·삭제된 회사는 404. */

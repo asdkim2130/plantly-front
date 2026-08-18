@@ -15,11 +15,12 @@ import SpotlightCard from "@/components/SpotlightCard";
 import StatsPanel from "@/components/StatsPanel";
 import { FilterIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
-import { getShowcase, searchCompanies } from "@/lib/companies";
-import { flattenCategories, getCategories, getCertifications, getIndustries } from "@/lib/options";
+import { getCompanyStats, getShowcase, searchCompanies } from "@/lib/companies";
+import { getCategories, getIndustries } from "@/lib/options";
 import type {
   CategoryPublicResponse,
   CompanyShowcaseResponse,
+  CompanyStatsResponse,
   CompanySummary,
   IndustryPublicResponse,
   PageInfo,
@@ -74,22 +75,18 @@ const keyOf = (r: Request) =>
 export default function HomePage() {
   const [notice, setNotice] = useState("");
 
-  // ── 마스터 데이터(대분류 카드 · 필터 칩 · 현황 숫자) ─────────────────────
+  // ── 마스터 데이터(대분류 카드 · 업종 필터) ───────────────────────────────
+  // 개수를 세려고 받는 게 아니라 화면에 실제로 그리려고 받는다 — 현황 숫자는 stats 가 따로 내려준다.
+  // (인증 선택지는 여기서 부르지 않는다. 패싯 UI 가 아직 없어 개수만 쓰였는데, 그건 stats 의 몫이다.)
   const [categories, setCategories] = useState<CategoryPublicResponse[]>([]);
   const [industries, setIndustries] = useState<IndustryPublicResponse[]>([]);
-  const [certificationCount, setCertificationCount] = useState<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([
-      getCategories(controller.signal),
-      getIndustries(controller.signal),
-      getCertifications(controller.signal),
-    ])
-      .then(([cats, inds, certs]) => {
+    Promise.all([getCategories(controller.signal), getIndustries(controller.signal)])
+      .then(([cats, inds]) => {
         setCategories(cats);
         setIndustries(inds);
-        setCertificationCount(certs.length);
       })
       .catch(() => {
         // 선택지를 못 받아도 목록 자체는 볼 수 있어야 하므로 조용히 넘어간다.
@@ -121,17 +118,17 @@ export default function HomePage() {
   const featured = showcase?.featured ?? [];
   const latest = showcase?.latest ?? [];
 
-  // ── 전체 등록 기업 수(히어로·현황) ───────────────────────────────────────
+  // ── 현황 지표(히어로·현황 패널) ──────────────────────────────────────────
   // 아래 목록 요청의 totalElement 를 재활용하지 않는다 — 검색·필터가 걸리면 그건 걸러진 수라
-  // 히어로의 "N COMPANIES" 가 조건에 따라 출렁인다. 조건 없는 1건짜리 요청으로 따로 센다.
-  const [totalCompanies, setTotalCompanies] = useState<number | null>(null);
+  // 히어로의 "N COMPANIES" 가 조건에 따라 출렁인다. 집계 전용 엔드포인트에서 따로 받는다.
+  const [stats, setStats] = useState<CompanyStatsResponse | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    searchCompanies({ page: 1, size: 1 }, controller.signal)
-      .then((result) => setTotalCompanies(result.pageInfo.totalElement))
+    getCompanyStats(controller.signal)
+      .then(setStats)
       .catch(() => {
-        // 숫자 하나 못 받은 것뿐이다. 자리는 비워 두고 화면은 그대로 간다.
+        // 숫자 몇 개 못 받은 것뿐이다. 자리는 스켈레톤으로 두고 화면은 그대로 간다.
       });
     return () => controller.abort();
   }, []);
@@ -218,7 +215,7 @@ export default function HomePage() {
 
   // 기본 상태에서 "전체 기업 보기"를 띄울지. 자리 밖에 더 있는지는 showcase 가 알려주지 않으므로
   // (공개 기업 전체를 세야 하는 값이라 서버에서 뺐다) 히어로가 이미 받아 둔 총수로 판단한다.
-  const canBrowseMore = totalCompanies === null || totalCompanies > latest.length;
+  const canBrowseMore = stats === null || stats.companyCount > latest.length;
 
   return (
     <>
@@ -228,7 +225,7 @@ export default function HomePage() {
           <div>
             <p className="font-heading text-brand-700 mb-2 text-[11px] tracking-[0.14em] uppercase">
               Manufacturing Network
-              {totalCompanies !== null && ` · ${totalCompanies.toLocaleString()} Companies`}
+              {stats !== null && ` · ${stats.companyCount.toLocaleString()} Companies`}
             </p>
             <h1 className="text-[clamp(30px,5vw,44px)] leading-[1.1] tracking-[-0.02em]">
               제조의 모든 연결,
@@ -244,10 +241,12 @@ export default function HomePage() {
         </div>
 
         <StatsPanel
-          companyCount={totalCompanies}
-          categoryCount={categories.length ? flattenCategories(categories).length : null}
-          industryCount={industries.length || null}
-          certificationCount={certificationCount}
+          // 네 숫자 모두 서버가 공개 목록과 같은 기준으로 세어 준다 — 화면에서 다시 계산하지 않는다.
+          // (카테고리는 특히 직접 세면 안 된다: 비활성 조상 아래의 활성 자식을 빼야 해서 트리 규칙이 필요하다)
+          companyCount={stats?.companyCount ?? null}
+          categoryCount={stats?.categoryCount ?? null}
+          industryCount={stats?.industryCount ?? null}
+          certificationCount={stats?.certificationCount ?? null}
           // 이미 받아 둔 레일을 잘라 쓴다 — "최근 등록" 때문에 요청이 늘지 않는다.
           recent={showcase ? showcase.latest.slice(0, 3) : null}
         />

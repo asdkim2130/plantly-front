@@ -35,7 +35,13 @@ export function getDomesticRegions(signal?: AbortSignal) {
   return api.get<DomesticRegionPublicResponse[]>("/domestic-regions", undefined, signal);
 }
 
-/** 트리 전체를 깊이 우선으로 펴서 센다 — "솔루션 분류 N개" 같은 집계에 쓴다. */
+/**
+ * 트리 전체를 깊이 우선으로 편다. 선택된 id 로 노드를 찾거나 3단 경로를 되짚을 때 쓴다.
+ *
+ * **개수를 세는 데는 쓰지 않는다.** "솔루션 분류 N개" 같은 현황 숫자는 서버가 내려주는
+ * `stats.categoryCount` 를 쓴다 — 지금은 답이 같지만, 노출 규칙(비활성 조상 아래 서브트리 제외)이
+ * 바뀌면 화면이 세는 값과 서버가 세는 값이 조용히 갈린다.
+ */
 export function flattenCategories(nodes: CategoryPublicResponse[]): CategoryPublicResponse[] {
   return nodes.flatMap((node) => [node, ...flattenCategories(node.children)]);
 }

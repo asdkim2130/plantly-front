@@ -126,6 +126,25 @@ export type CompanyShowcaseResponse = {
   latest: CompanySummary[];
 };
 
+/**
+ * GET /api/v1/companies/stats — 메인 현황 지표.
+ *
+ * 개수만 필요한 화면이 목록 API 를 빌려 쓰지 않게 하려고 만든 전용 엔드포인트다. 예전에는 회사 수를
+ * 목록 API 에 `size=1` 로 물어 `pageInfo.totalElement` 만 빼 썼고(카드 1건을 만들어 버렸다),
+ * 인증 수는 선택지 목록 전체를 받아 길이만 셌다.
+ *
+ * 각 숫자는 대응하는 공개 목록과 **같은 기준**으로 서버가 센다 — 현황이 "업종 24"인데 드롭다운에
+ * 20개만 있으면 안 되기 때문이다. 그러니 이 값을 화면에서 다시 계산하지 않는다.
+ */
+export type CompanyStatsResponse = {
+  /** 공개 노출 중인 기업 수(비공개·삭제 제외) */
+  companyCount: number;
+  /** 공개 카테고리 트리의 **전체 노드 수**(대+중+소). 대분류 개수가 아니다 */
+  categoryCount: number;
+  industryCount: number;
+  certificationCount: number;
+};
+
 /** GET /api/v1/companies 쿼리. 전부 선택 — 없으면 그 조건이 빠진다(전체 브라우즈). */
 export type CompanySearchQuery = {
   /** 통합 검색어. 회사명·소개·태그·장비명 등 도큐먼트 전체를 훑는다 */
