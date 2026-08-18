@@ -182,7 +182,7 @@ DTO 필드나 검증 규칙이 궁금하면 추측하지 말고 백엔드 코드
 | `faint` | `#949494` | 라벨·캡션 |
 | `line` | `#DBDBDB` | 카드 테두리 |
 | `line-soft` | `#E8E8E8` | 카드 안쪽 구분선 |
-| `page` | `#F2F2F3` | 흰 컨테이너 바깥 바탕 |
+| `page` | `#FFFFFF` | 컨테이너 바깥 바탕. 디자인 원본은 `#F2F2F3` 이지만 판과 같은 흰색으로 맞췄다 |
 | `font-heading` | Barlow Condensed | 제목·숫자·라벨 |
 | `font-body` | Barlow | 본문 |
 
@@ -222,7 +222,7 @@ Tailwind 로 주고, "생김새"는 이 클래스로 준다.
 ## 파일 배치
 
 ```
-app/layout.tsx           1180px 흰 판 + 헤더·푸터 공통 틀, next/font 설정
+app/layout.tsx           1180px 폭 제한 + 헤더·푸터 공통 틀, next/font 설정 (바탕 전체가 흰색, 좌우 테두리 없음)
 app/page.tsx             첫 화면 — 히어로 검색 · 대분류 카드 · 스포트라이트/추천 레일 · 전체 기업 격자
 app/globals.css          디자인 토큰(@theme) + 컴포넌트 클래스(@layer components)
 components/Corners.tsx   청사진 모서리 마크

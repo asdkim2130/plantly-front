@@ -55,7 +55,6 @@ export default function SpotlightCard({ company, kicker, onError }: Props) {
             url={company.logoUrl}
             name={company.companyName}
             className="size-[46px] rounded-lg"
-            padding={4}
           />
           <div className="min-w-0">
             <div className="flex items-center gap-[7px]">

@@ -31,10 +31,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="ko" className={`${barlow.variable} ${barlowCondensed.variable} antialiased`}>
       <body>
         {/*
-          디자인은 회색 바탕 위에 1180px 흰 판이 떠 있는 구조다.
-          좁은 화면에서는 판이 화면 폭을 그대로 쓰고 테두리만 남는다.
+          디자인 원본은 회색 바탕 위에 1180px 흰 판이 떠 있는 구조지만,
+          바깥 바탕(--color-page)을 판과 같은 흰색으로 맞추고 좌우 테두리도 뺐다.
+          폭 제한(max-w)만 남아서 내용이 가운데 정렬되고, 양옆은 이어진 흰 바탕이다.
         */}
-        <div className="mx-auto flex min-h-screen w-full max-w-[1180px] flex-col border-line bg-white sm:border-x">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1180px] flex-col bg-white">
           <header className="flex items-center gap-6 border-b border-line px-4 py-3.5 sm:px-[30px]">
             <Link href="/" className="mr-auto flex items-center" aria-label="플랜틀리 홈">
               <Image

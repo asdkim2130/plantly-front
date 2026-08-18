@@ -23,7 +23,7 @@ export default function CompanyCard({ company, onError }: Props) {
           <Logo
             url={company.logoUrl}
             name={company.companyName}
-            className="size-[52px] border border-line"
+            className="size-[52px] rounded-lg border border-line"
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
