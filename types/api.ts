@@ -182,6 +182,14 @@ export type GalleryImageResponse = {
   imageUrl: string;
   imageType: ImageType;
   displayOrder: number;
+  /**
+   * 공개 노출 여부. 저장은 살아 있지만 등급 한도를 넘겨 가려진 상태를 뜻한다(삭제가 아니다).
+   *
+   * **공개 조회에서는 항상 true 다** — 꺼진 이미지는 응답에서 아예 빠지기 때문이다.
+   * `false` 가 나타나는 건 소유자/관리자 조회뿐이고, 그쪽 화면은 "저장돼 있지만 지금은 공개되지 않는
+   * 항목"을 회색으로 구분하는 근거로 쓴다. 여기서 지워버리면 소유자가 데이터가 날아갔다고 오해한다.
+   */
+  active: boolean;
 };
 
 export type ProjectReferenceResponse = {
@@ -198,6 +206,8 @@ export type CategoryRef = {
   slug: string;
   depth: number;
   iconUrl: string | null;
+  /** `GalleryImageResponse.active` 와 같은 규약 — 공개 조회에서는 항상 true, 소유자/관리자 조회에서만 false */
+  active: boolean;
 };
 
 export type CertificationRef = {
@@ -237,7 +247,7 @@ export type CompanyPublicResponse = {
   companyName: string;
   ceoName: string;
   establishmentDate: string; // yyyy-MM-dd
-  postalCode: string | null;
+  // postalCode 는 없다 — 백엔드가 공개 응답에서 의도적으로 뺐다(화면에 안 쓰이고 도로명·지번으로 충분).
   roadAddress: string | null;
   jibunAddress: string | null;
   detailAddress: string | null;
