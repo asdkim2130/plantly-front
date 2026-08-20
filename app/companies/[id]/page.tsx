@@ -17,8 +17,13 @@ import {
 } from "@/lib/labels";
 import type { CompanyPublicResponse } from "@/types/api";
 
-/** 갤러리에서 한 번에 펼쳐 두는 장수. 넘치면 "N장 더 보기"로 접는다(C21 은 30장이다). */
-const GALLERY_PREVIEW = 4;
+/**
+ * 소개 영상 카드를 그릴지. 지금은 끈다.
+ *
+ * 백엔드는 `videoUrl` 을 내려주지만 화면에서 일단 감추기로 했다. 값이 사라진 게 아니라 노출을
+ * 미룬 것이라 마크업을 지우지 않고 이 스위치만 둔다 — 다시 켤 때 이 한 줄을 true 로 바꾼다.
+ */
+const SHOW_INTRO_VIDEO = false;
 
 /**
  * 끝난 조회 1건의 결과. 성공이면 company, 실패면 error 가 찬다.
@@ -49,14 +54,8 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
   const validId = Number.isInteger(companyId) && companyId > 0;
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
-  /** 좋아요·즐겨찾기 실패(주로 비로그인)와 링크 복사 결과. 본문은 그대로 두고 한 줄로 띄운다. */
+  /** 좋아요·즐겨찾기 실패(주로 비로그인). 본문은 그대로 두고 탭 아래에 한 줄로 띄운다. */
   const [notice, setNotice] = useState("");
-  /**
-   * 갤러리를 다 펼친 회사의 id. 불리언으로 두면 다른 회사로 옮겨가도 펼침이 남는다 —
-   * "이 회사의 사진을 다 보겠다"는 뜻이지 화면 전체의 설정이 아니다.
-   */
-  const [expandedGalleryFor, setExpandedGalleryFor] = useState<number | null>(null);
-
   useEffect(() => {
     if (!validId) return;
 
@@ -115,16 +114,13 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
     items: company.certifications.filter((c) => c.type === type),
   })).filter((group) => group.items.length > 0);
 
-  const gallery =
-    expandedGalleryFor === company.id
-      ? company.galleryImages
-      : company.galleryImages.slice(0, GALLERY_PREVIEW);
-  const hiddenImages = company.galleryImages.length - gallery.length;
-
   // 어떤 섹션을 그리는지가 곧 탭 목록이다 — 빈 섹션은 제목만 남기지 않고 통째로 뺀다(C20).
-  const hasOverview = Boolean(company.content || company.tagNames.length || company.videoUrl);
+  const hasOverview = Boolean(
+    company.content || company.tagNames.length || (SHOW_INTRO_VIDEO && company.videoUrl),
+  );
+  // 분류(categories)는 히어로로 올라갔으므로 이 조건에 넣지 않는다 — 넣으면 분류만 있는 회사에
+  // 아무것도 없는 "제공 분야" 섹션과 그 탭이 남는다.
   const hasCapability =
-    company.categories.length > 0 ||
     company.materialNames.length > 0 ||
     company.equipmentNames.length > 0 ||
     certificationGroups.length > 0 ||
@@ -154,6 +150,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
   const inquiry = contact?.email
     ? {
         href: `mailto:${contact.email}?subject=${encodeURIComponent(`[플랜틀리] ${company.companyName} 문의`)}`,
+        // 어디로 가는지 주소까지 보여준다 — 누르기 전에 목적지가 보이는 편이 미덥다.
         note: `담당자 이메일(${contact.email})로 메일 창이 열립니다.`,
       }
     : contact?.phone
@@ -211,10 +208,11 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
         <div className="relative flex flex-col gap-8 px-4 pt-[22px] pb-[30px] sm:px-[30px] lg:flex-row lg:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-[15px]">
             <div className="flex items-start gap-[18px]">
+              {/* 테두리 없이 사진만 놓는다 — 둥근 모서리에 맞춰 사진 귀퉁이가 깎이는 건 감수한다. */}
               <Logo
                 url={company.logoUrl}
                 name={company.companyName}
-                className="size-[78px] rounded-xl border border-white/30"
+                className="size-[78px] rounded-xl"
               />
               <div className="flex min-w-0 flex-col gap-[9px]">
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -267,6 +265,20 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
                     ))}
                   </div>
                 )}
+
+                {/*
+                  정식 분류. 업종(어떤 산업인가)과 분류(무엇을 다루는가)는 다른 축이라 줄을 나눈다.
+                  남색 배경 위라 아웃라인 칩도 밝은 파랑 계열(tagcat-dark)로 뒤집는다.
+                */}
+                {company.categories.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-[7px]">
+                    {company.categories.map((category) => (
+                      <span key={category.id} className="tag tag-lg tagcat-dark">
+                        {category.categoryName}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -309,7 +321,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
                 type="button"
                 aria-label="공유하기"
                 className="icbtn icbtn-dark size-[38px]"
-                onClick={() => copyLink(setNotice)}
+                onClick={() => void copyLink()}
               >
                 <ShareIcon size={17} />
               </button>
@@ -324,7 +336,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
 
       <DetailTabs tabs={tabs} />
 
-      {/* 좋아요·즐겨찾기 실패(주로 비로그인)와 링크 복사 결과가 같은 자리에 뜬다. */}
+      {/* 좋아요·즐겨찾기 실패(주로 비로그인)가 뜨는 자리. 링크 복사 결과는 확인 창으로 알린다. */}
       {notice && (
         <p className="border-b border-line-soft px-4 py-2.5 text-[13px] text-brand-700 sm:px-[30px]">
           {notice}
@@ -356,7 +368,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
                 videoUrl 은 회사 등급이 허용하지 않으면 저장돼 있어도 응답에서 null 로 온다(서버가 가린다).
                 호스트가 유튜브인지 무엇인지는 계약에 없어 embed 하지 않고 링크로만 연다.
               */}
-              {company.videoUrl && (
+              {SHOW_INTRO_VIDEO && company.videoUrl && (
                 <a
                   href={externalHref(company.videoUrl)}
                   target="_blank"
@@ -380,16 +392,6 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
 
           {hasCapability && (
             <Section id="capability" title="제공 분야" kicker="Capability">
-              {company.categories.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {company.categories.map((category) => (
-                    <span key={category.id} className="tag tag-lg tagcat">
-                      {category.categoryName}
-                    </span>
-                  ))}
-                </div>
-              )}
-
               {(company.materialNames.length > 0 || company.equipmentNames.length > 0) && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {company.materialNames.length > 0 && (
@@ -509,39 +511,28 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
               className="flex flex-col gap-3.5"
               style={{ scrollMarginTop: TAB_BAR_HEIGHT }}
             >
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="flex items-baseline gap-2.5">
-                  <h2 className="text-[23px]">상세 이미지</h2>
-                  <span className="kick">{company.galleryImages.length}장</span>
-                </div>
-                <span className="text-xs text-faint">현장·설비·납품 사례</span>
+              <div className="flex items-baseline gap-2.5">
+                <h2 className="text-[23px]">상세 이미지</h2>
+                <span className="kick">{company.galleryImages.length}장</span>
               </div>
 
               {/*
                 격자가 아니라 본문 폭을 채우는 세로 띠다. 사진 비율이 제각각인데 상자를 못 박으면
                 설비 사진이 잘리는데, 그게 이 섹션이 보여주려는 내용이라 원본 비율을 그대로 둔다.
+                접지 않고 받은 만큼 전부 그린다(C21 은 30장이다) — 사진을 보러 온 자리라 한 번 더
+                누르게 하지 않는다. 화면 밖 사진은 loading="lazy" 라 스크롤이 닿을 때 받아 온다.
+
+                간격 없이 붙여 한 장의 띠처럼 보이게 한다(모서리도 깎지 않는다). 맞닿는 테두리를
+                한 겹으로 합치는 건 .gshot + .gshot 쪽이다.
               */}
-              <div className="flex flex-col gap-2.5">
-                {gallery.map((image) => (
+              <div className="flex flex-col">
+                {company.galleryImages.map((image) => (
                   <figure key={image.imageUrl} className="gshot">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={image.imageUrl} alt="" loading="lazy" />
                   </figure>
                 ))}
               </div>
-
-              {hiddenImages > 0 && (
-                // 마지막 사진 위로 흰 그라데이션을 덮어 "아래로 더 있다"를 보여준다.
-                <div className="relative -mt-[52px] flex justify-center bg-linear-to-b from-transparent to-white to-72% pt-[52px]">
-                  <button
-                    type="button"
-                    className="btn btn-secondary px-[26px]"
-                    onClick={() => setExpandedGalleryFor(company.id)}
-                  >
-                    사진 {hiddenImages}장 더 보기
-                  </button>
-                </div>
-              )}
             </section>
           )}
         </div>
@@ -816,14 +807,19 @@ function externalHref(url: string): string {
 }
 
 /**
- * 현재 주소를 클립보드에 복사한다.
- * `navigator.clipboard` 는 보안 컨텍스트(https·localhost)에서만 있어서, 없으면 조용히 실패하지 않고 알린다.
+ * 현재 주소를 클립보드에 복사하고 결과를 확인 창으로 알린다.
+ *
+ * 화면 한쪽에 조용히 뜨는 줄이 아니라 눌러서 닫는 창인 이유는, 복사는 **누른 그 순간에만** 확인하면
+ * 되는 일이라서다 — 히어로 아래 한 줄로 띄우면 팝업 창에서는 스크롤 밖이라 보이지도 않는다.
+ *
+ * `navigator.clipboard` 는 보안 컨텍스트(https·localhost)에서만 있다. 없으면 조용히 실패하지 않고
+ * 직접 복사하라고 알린다.
  */
-async function copyLink(notify: (message: string) => void) {
+async function copyLink() {
   try {
     await navigator.clipboard.writeText(window.location.href);
-    notify("링크가 복사되었습니다.");
+    window.alert("링크가 복사되었습니다.");
   } catch {
-    notify("링크를 복사하지 못했습니다. 주소창에서 직접 복사해 주세요.");
+    window.alert("링크를 복사하지 못했습니다. 주소창에서 직접 복사해 주세요.");
   }
 }

@@ -573,17 +573,17 @@
     border-bottom-color: var(--color-brand);
   }
 
-  /* 사양 표 한 줄 — 라벨은 왼쪽, 값은 오른쪽 끝에 붙고 점선으로 나뉜다. */
+  /*
+   * 사양 표 한 줄 — 라벨은 왼쪽, 값은 오른쪽 끝에 붙는다.
+   * 원본 디자인의 점선 구분선은 뺐다. 줄이 대여섯 개뿐이라 선이 없어도 짝이 읽히고,
+   * 좁은 카드에 가로선이 겹겹이 그이면 표가 촘촘해 보인다. 간격이 구분을 맡는다.
+   */
   .srow {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
     padding: 9px 0;
-    border-bottom: 1px dotted color-mix(in srgb, var(--color-ink) 22%, transparent);
-  }
-  .srow:last-child {
-    border-bottom: 0;
   }
   .skey {
     flex: none;
@@ -605,9 +605,7 @@
    * 사진 비율이 제각각인데 상자를 못 박으면 설비 사진이 잘린다(그게 이 섹션의 내용이다).
    */
   .gshot {
-    border: 1px solid var(--color-line);
-    border-radius: 8px;
-    overflow: hidden;
+    /* 테두리 없이 사진만 이어 붙인다. 바탕 해칭은 사진이 아직 안 왔거나 깨졌을 때만 보인다. */
     background: repeating-linear-gradient(135deg, #e7eefc 0 10px, #eff4fd 10px 20px);
   }
   .gshot img {
