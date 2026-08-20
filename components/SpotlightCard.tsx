@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import Cover from "@/components/Cover";
+import DetailLink from "@/components/DetailLink";
 import LikeFavorite from "@/components/LikeFavorite";
 import Logo from "@/components/Logo";
 import TagRow from "@/components/TagRow";
@@ -65,12 +65,12 @@ export default function SpotlightCard({ company, kicker, onError }: Props) {
                   가는 게 맞다 — 덮개 방식의 이유는 CompanyCard 주석 참고.
                   (레일은 드래그 스크롤이 아니라 화살표·점·휠로 넘기므로 덮개가 드래그를 가로채지 않는다.)
                 */}
-                <Link
-                  href={`/companies/${company.id}`}
+                <DetailLink
+                  companyId={company.id}
                   className="text-inherit no-underline after:absolute after:inset-0 after:content-['']"
                 >
                   {company.companyName}
-                </Link>
+                </DetailLink>
               </h3>
               {company.verified && (
                 <span title="플랜틀리 검수 완료" className="sl-kicker shrink-0">
@@ -102,9 +102,9 @@ export default function SpotlightCard({ company, kicker, onError }: Props) {
         <TagRow company={company} dark expand />
         {/* 덮개보다 위로 올린다 — 안 그러면 좋아요·즐겨찾기를 눌러도 상세로 넘어간다. */}
         <div className="relative z-[1] mt-auto flex gap-2 pt-2">
-          <Link href={`/companies/${company.id}`} className="btn sl-cta">
+          <DetailLink companyId={company.id} className="btn sl-cta">
             기업 상세 보기
-          </Link>
+          </DetailLink>
           <LikeFavorite
             company={company}
             onError={onError}

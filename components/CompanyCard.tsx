@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import CardSlot from "@/components/CardSlot";
+import DetailLink from "@/components/DetailLink";
 import LikeFavorite from "@/components/LikeFavorite";
 import Logo from "@/components/Logo";
 import TagRow from "@/components/TagRow";
@@ -37,12 +37,12 @@ export default function CompanyCard({ company, onError }: Props) {
                       전부 링크 이름이 되어 읽어 주기 어려워진다.
                   덮개의 기준은 .blueprint 의 position:relative 다.
                 */}
-                <Link
-                  href={`/companies/${company.id}`}
+                <DetailLink
+                  companyId={company.id}
                   className="text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-brand"
                 >
                   {company.companyName}
-                </Link>
+                </DetailLink>
               </h3>
               {/* verified = 에디터 선정 큐레이션. 사업자 확인(businessVerified)과는 다른 축이다. */}
               {company.verified && (

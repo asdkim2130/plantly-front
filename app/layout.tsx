@@ -3,7 +3,9 @@ import { Barlow_Condensed, Noto_Sans_KR } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import HeaderNav from "@/components/HeaderNav";
+import PopupChrome from "@/components/PopupChrome";
 import SessionProvider from "@/components/SessionProvider";
+import { POPUP_WINDOW_NAME } from "@/lib/popup";
 import "./globals.css";
 
 /*
@@ -48,8 +50,27 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html
       lang="ko"
       className={`${notoSansKr.variable} ${barlowCondensed.variable} subpixel-antialiased`}
+      /*
+       * 아래 인라인 스크립트가 하이드레이션 **전에** 이 태그에 data-popup 을 붙인다. 서버가 그린
+       * HTML 에는 없는 속성이라 React 가 "attributes didn't match" 로 경고하는데, 여기서는 어긋나는
+       * 게 정상이다 — 팝업인지 아닌지는 서버가 알 수 없고(창 이름은 브라우저에만 있다), 그래서
+       * 첫 페인트 전에 브라우저가 세우는 값이다.
+       *
+       * 이 속성은 **이 태그 한 겹에만** 적용된다(자식의 불일치는 그대로 경고한다).
+       */
+      suppressHydrationWarning
     >
       <body>
+        {/*
+          팝업 창이면 첫 페인트 전에 표식을 세운다 — 상단바가 잠깐 보였다 사라지는 걸 막으려면
+          헤더 마크업보다 먼저 실행돼야 해서 body 의 첫 자식에 인라인으로 둔다.
+          창 이름은 주소에 남지 않아 "공유하기"로 복사한 링크가 깨끗하다(lib/popup.ts 주석 참고).
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(window.name===${JSON.stringify(POPUP_WINDOW_NAME)}&&location.pathname.startsWith("/companies/"))document.documentElement.setAttribute("data-popup","1")}catch(e){}`,
+          }}
+        />
         {/*
           디자인 원본은 회색 바탕 위에 1180px 흰 판이 떠 있는 구조지만,
           바깥 바탕(--color-page)을 판과 같은 흰색으로 맞추고 좌우 테두리도 뺐다.
@@ -59,9 +80,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           로그인 상태는 헤더와 화면들이 함께 쓰는 값이라 여기서 한 번만 읽는다.
           서버 컴포넌트인 이 레이아웃이 클라이언트 컴포넌트를 렌더하는 건 정상적인 방향이다.
         */}
+        {/* 화면 안에서 경로가 바뀔 때 표식을 다시 맞춘다(문서를 새로 읽지 않아 위 스크립트가 안 돈다). */}
+        <PopupChrome />
+
         <SessionProvider>
           <div className="mx-auto flex min-h-screen w-full max-w-[1180px] flex-col bg-white">
-            <header className="flex items-center gap-6 border-b border-line px-4 py-3.5 sm:px-[30px]">
+            {/* .site-header 는 팝업 창에서 이 줄을 통째로 감추는 표식이다(globals.css). */}
+            <header className="site-header flex items-center gap-6 border-b border-line px-4 py-3.5 sm:px-[30px]">
               <Link href="/" className="mr-auto flex items-center" aria-label="플랜틀리 홈">
                 <Image
                   src="/plantly-logo.png"

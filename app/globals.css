@@ -70,6 +70,7 @@
     outline: 2px solid var(--color-brand);
     outline-offset: 2px;
   }
+
 }
 
 /*
@@ -614,4 +615,17 @@
     width: 100%;
     height: auto;
   }
+}
+
+/*
+ * 상세를 띄운 팝업 창에서는 사이트 상단바를 감춘다 — 그 창은 기업 하나를 보여주려고 연 창이라
+ * 로고·메뉴가 자리만 차지하고, 히어로가 창 맨 위에 붙는 편이 낫다.
+ * 표식(data-popup)은 창 이름을 보고 세운다(app/layout.tsx 의 인라인 스크립트 · PopupChrome).
+ *
+ * **레이어 밖에 둔다.** @layer base 나 components 에 넣으면 헤더에 붙은 `flex` 유틸리티에게 진다 —
+ * Tailwind 의 레이어 순서가 theme → base → components → utilities 라, 뒤 레이어가 특정도와 무관하게
+ * 이기기 때문이다. 레이어에 속하지 않은 규칙은 어떤 레이어보다도 뒤에 와서 확실히 이긴다.
+ */
+[data-popup] .site-header {
+  display: none;
 }

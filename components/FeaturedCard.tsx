@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import CardSlot from "@/components/CardSlot";
 import Cover from "@/components/Cover";
+import DetailLink from "@/components/DetailLink";
 import LikeFavorite from "@/components/LikeFavorite";
 import Logo from "@/components/Logo";
 import TagRow from "@/components/TagRow";
@@ -56,12 +56,12 @@ export default function FeaturedCard({ company, onError }: Props) {
             <div className="flex items-center gap-1.5">
               <h3 className="min-w-0 truncate text-[19px] leading-tight">
                 {/* 카드 전체가 클릭 대상이다 — 덮개 방식의 이유는 CompanyCard 주석 참고. */}
-                <Link
-                  href={`/companies/${company.id}`}
+                <DetailLink
+                  companyId={company.id}
                   className="text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-brand"
                 >
                   {company.companyName}
-                </Link>
+                </DetailLink>
               </h3>
               {company.verified && (
                 <span
