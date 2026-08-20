@@ -35,24 +35,32 @@ export default function CompanyCard({ company, onError }: Props) {
                 </span>
               )}
             </div>
-            <p className="mt-[3px] line-clamp-2 text-[12.5px] leading-[1.45] text-muted">
+            {/* 한 줄짜리 소개도 두 줄 자리를 차지하게 둔다 — 카드마다 아랫단이 어긋나지 않게. */}
+            <p className="mt-[3px] line-clamp-2 min-h-[2lh] text-[12.5px] leading-[1.45] text-muted">
               {company.introTitle ?? "소개 문구가 아직 없습니다."}
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-x-[5px] gap-y-1 text-xs text-muted">
+        {/*
+          업종 라벨 + 주소는 무슨 일이 있어도 한 줄이다. 줄바꿈을 허용하면 주소가 긴 회사만
+          카드가 한 줄 만큼 길어져 격자에서 아랫단이 들쭉날쭉해진다 — 넘치면 말줄임으로 자른다.
+        */}
+        <div className="flex items-center gap-x-[5px] text-xs text-muted">
           {industry && (
-            <span className="ind">
-              <FactoryIcon size={12} />
-              {industry}
+            <span className="ind max-w-[45%] shrink-0">
+              <FactoryIcon size={12} className="shrink-0" />
+              <span className="truncate">{industry}</span>
             </span>
           )}
-          <span className="inline-flex items-center gap-[5px]">
-            <PinIcon size={13} />
-            {company.address ?? "주소 미등록"}
+          <span className="inline-flex min-w-0 items-center gap-[5px]">
+            <PinIcon size={13} className="shrink-0" />
+            <span className="truncate">{company.address ?? "주소 미등록"}</span>
           </span>
         </div>
-        <TagRow company={company} />
+        {/* 칩이 한 줄뿐이거나 아예 없는 회사(C20)도 두 줄 자리는 그대로 비워 둔다. */}
+        <div className="tagrow">
+          <TagRow company={company} />
+        </div>
         <div className="mt-auto flex items-center justify-between border-t border-line-soft pt-[11px]">
           {/*
           상세 화면이 아직 없어 비워 두는 자리. 분류 '이름'은 위 TagRow 가 칩으로 그리므로

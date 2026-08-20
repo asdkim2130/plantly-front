@@ -124,6 +124,17 @@
     background: color-mix(in srgb, var(--color-ink) 7%, transparent);
   }
 
+  /*
+   * 버튼 안에 끼운 네이티브 select(업종 필터).
+   * 펼쳐지는 옵션 목록은 브라우저가 흰 판 위에 그리면서 글자색만 select 에서 물려받는다.
+   * 그래서 버튼이 흰 글씨가 되는 순간 목록이 흰 글씨 × 흰 판이 되어 통째로 사라진다.
+   * 목록 쪽 색은 여기서 못 박아 두고, 켜진 상태 버튼도 흰 글씨 대신 밝은 배경 + 진한 글씨로 쓴다.
+   */
+  .btn > select option {
+    color: var(--color-ink);
+    background-color: #fff;
+  }
+
   /* 아이콘 버튼(좋아요·즐겨찾기). .on 이 붙으면 켜진 상태. */
   .icbtn {
     display: grid;
@@ -218,6 +229,16 @@
     border-color: rgba(166, 197, 255, 0.6);
     color: var(--color-brand-200);
     font-weight: 500;
+  }
+
+  /*
+   * 칩 줄의 자리. 칩 수가 회사마다 달라 높이가 들쭉날쭉하면 격자에서 카드 아랫단이 어긋난다.
+   * 접기 한도(TagRow 의 MAX_LINES)와 같은 두 줄 자리를 늘 비워 두고, 칩이 없어도 유지한다.
+   * 값은 .tag 에서 나온다 — 글자 11px × line-height 1.5 + 세로 패딩 6 + 테두리 2, 줄 간격 5px.
+   * (마우스를 올려 접힌 칩이 펼쳐질 때는 min-height 라 그대로 늘어난다.)
+   */
+  .tagrow {
+    min-height: calc(2 * (11px * 1.5 + 8px) + 5px);
   }
 
   /* 업종 라벨 — 배지가 아니라 주소 줄 앞에 붙는 아웃라인 라벨이다. */
@@ -367,19 +388,22 @@
     padding: 18px 18px 20px;
     background: #fff;
     text-align: left;
-    cursor: pointer;
     transition:
       border-color 0.16s,
       box-shadow 0.16s,
       transform 0.16s;
   }
-  .cat:hover {
+  /*
+    지금 이 카드는 누를 수 없는 판이라(목록 화면이 생기면 <a> 가 된다) 호버 반응을 링크·버튼일
+    때로 한정한다. 정적인 div 가 떠오르고 커서가 손 모양으로 바뀌면 눌러도 되는 것처럼 읽힌다.
+  */
+  .cat:is(a, button) {
+    cursor: pointer;
+  }
+  .cat:is(a, button):hover {
     border-color: var(--color-brand);
     box-shadow: 0 6px 22px rgba(11, 33, 72, 0.12);
     transform: translateY(-2px);
-  }
-  .cat.on {
-    border-color: var(--color-brand);
   }
 
   /* ── 검색 입력 ─────────────────────────────────────────────── */
@@ -415,7 +439,14 @@
   .railtrack::-webkit-scrollbar {
     height: 0;
   }
+  /* 래퍼가 pointer-events:none 이라 슬라이드에서 다시 켠다 (Rail.tsx 주석 참고).
+     빈 padding 영역만 이벤트를 통과시켜, 레일 아래 요소가 가려져 클릭되지 않던 문제를 막는다.
+     카드는 여기서 auto 를 받으므로 hover 도 휠 가로 스크롤도 그대로다. */
+  .railtrack > * {
+    pointer-events: auto;
+  }
   .railbtn {
+    pointer-events: auto;
     position: absolute;
     top: 50%;
     transform: translateY(-50%);

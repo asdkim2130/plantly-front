@@ -220,7 +220,20 @@ export default function Rail({ children, trackClassName, label }: Props) {
 
   return (
     <div>
-      <div className="relative">
+      {/*
+        pointer-events-none 은 레일이 **아래 콘텐츠의 클릭을 먹는 것**을 막는다.
+
+        트랙은 hover 로 커지는 카드가 잘리지 않게 아래쪽에 큰 padding 을 두고(overflow-x:auto 는
+        세로도 같이 자른다) 그만큼을 음수 margin 으로 되당긴다. 그런데 음수 margin 은 이 래퍼 밖으로
+        빠져나가(margin collapsing) 레이아웃만 당길 뿐, 트랙과 래퍼의 **박스는 그대로 아래를 덮는다.**
+        비워둔 자리라 눈에는 안 보이지만 히트 테스트에는 잡혀서, 레일 바로 아래 요소(섹션 제목,
+        카테고리 칩 줄)가 클릭되지 않았다.
+
+        그래서 껍데기는 이벤트를 통과시키고 실제 내용물만 다시 켠다 — 카드는 .railtrack > * 로,
+        화살표는 .railbtn 으로 globals.css 에서 pointer-events:auto 를 받는다. 빈 padding 영역만
+        투명해지므로 카드 hover 도 가로 스크롤도 그대로다(휠 이벤트는 카드에서 트랙으로 버블링된다).
+      */}
+      <div className="pointer-events-none relative">
         <div ref={trackRef} className={`railtrack ${trackClassName}`} onScroll={measure}>
           {phantoms("start")}
           {items}

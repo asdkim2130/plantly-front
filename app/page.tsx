@@ -147,6 +147,18 @@ export default function HomePage() {
   // 목록 API 를 쓰는 상태인지. 아니면 showcase 의 latest 를 그대로 그린다.
   const usesListApi = filtered || request.browseAll;
 
+  /**
+   * 큐레이션 레일(스포트라이트·추천)을 접을지 — **검색어가 있을 때만** 접는다.
+   *
+   * 카테고리 칩과 업종 필터는 격자 섹션 머리에 달린 그 섹션의 손잡이다. 누르면 격자 내용만
+   * 갈아 끼우는 게 맞지 화면 전체가 "검색 결과"로 바뀔 일이 아닌데, 레일까지 접으면 칩 하나 눌렀을
+   * 뿐인데 위쪽 큐레이션이 통째로 사라지면서 보고 있던 격자가 화면 위로 튄다.
+   *
+   * 히어로 검색은 다르다. "찾으러 왔다"는 의도라 큐레이션이 결과와 섞이면 "이게 내 검색 결과인가"
+   * 하고 헷갈리므로 그때는 접는다.
+   */
+  const searching = Boolean(request.keyword);
+
   const key = keyOf(request);
   const loading = listing?.key !== key;
   const loadingMore = loading && request.page > 1;
@@ -209,6 +221,19 @@ export default function HomePage() {
   const topLevel = categories.filter((c) => c.depth === 1);
   const hasMore = pageInfo ? pageInfo.pageNumber < pageInfo.totalPage : false;
 
+  // 제목은 지금 격자에 실린 게 무엇인지를 말한다. 칩으로 좁힌 건 "검색 결과"가 아니라 그 분류의 기업이다.
+  const activeCategory = topLevel.find((c) => c.id === request.categoryId);
+  const activeIndustry = industries.find((i) => i.id === request.industryId);
+  const gridTitle = searching
+    ? "검색 결과"
+    : activeCategory
+      ? `${activeCategory.categoryName} 기업`
+      : activeIndustry
+        ? `${activeIndustry.industryName} 기업`
+        : request.browseAll
+          ? "전체 기업"
+          : "최근 등록 기업";
+
   // 격자에 그릴 카드와 로딩 상태는 모드에 따라 출처가 다르다.
   const cards = usesListApi ? companies : latest;
   const cardsLoading = usesListApi ? loading && !loadingMore : showcase === null;
@@ -252,14 +277,12 @@ export default function HomePage() {
         />
       </section>
 
-      <CategoryCards
-        categories={topLevel}
-        selectedId={request.categoryId}
-        onSelect={(categoryId) => {
-          apply({ categoryId });
-          document.getElementById("companies")?.scrollIntoView({ behavior: "smooth" });
-        }}
-      />
+      {/*
+        누르면 아래 격자에 패싯을 걸던 카드였는데, 그러면 검색 상태로 들어가 바로 아래 스포트라이트·
+        추천 레일이 접혔다. 이 카드가 갈 곳은 메인 격자가 아니라 별도 목록 화면이라 클릭을 아예 뗐다
+        — 목록 라우트가 생기면 그리로 가는 링크가 된다.
+      */}
+      <CategoryCards categories={topLevel} />
 
       <div className="flex flex-col gap-[34px] px-4 pt-[34px] pb-9 sm:px-[30px]">
         {notice && (
@@ -271,11 +294,8 @@ export default function HomePage() {
           </p>
         )}
 
-        {/*
-          검색·필터가 걸리면 큐레이션 레일은 접는다 — 검색 결과와 섞이면
-          "이게 내 검색 결과인가?" 하고 헷갈린다.
-        */}
-        {!filtered && (
+        {/* 접는 조건은 검색어뿐이다 — 칩·업종 필터로는 접지 않는다(`searching` 주석 참고). */}
+        {!searching && (
           <>
             <section className="flex flex-col gap-[13px]">
               <SectionHead title="스포트라이트" note="플랜틀리가 이번 주 직접 소개하는 기업" />
@@ -341,43 +361,72 @@ export default function HomePage() {
 
         {/* ── 기업 격자 ─────────────────────────────────────────────────── */}
         <section id="companies" className="flex scroll-mt-4 flex-col gap-[13px]">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div className="flex items-baseline gap-2.5">
-              <h2 className="text-[23px]">
-                {filtered ? "검색 결과" : request.browseAll ? "전체 기업" : "최근 등록 기업"}
-              </h2>
-              <span className="text-[12.5px] text-faint">
-                {/*
-                  기본 상태에는 총 개수를 붙이지 않는다. 여기 실린 건 "가장 최근 N개"라 전체 수를
-                  나란히 두면 N개만 받아 놓고 전체 수를 세어 보인 것처럼 읽힌다.
-                */}
-                {usesListApi && pageInfo ? (
-                  <>
-                    총 <b className="text-brand-700">{pageInfo.totalElement.toLocaleString()}</b>개
-                  </>
-                ) : usesListApi ? (
-                  " "
-                ) : (
-                  "가장 최근에 등록된 기업"
-                )}
-              </span>
-              {/* 전체 브라우즈로 넘어가면 돌아올 길이 없어진다 — 검색과 달리 지울 조건이 없어서다. */}
-              {request.browseAll && !filtered && (
-                <button
-                  type="button"
-                  className="text-brand-700 text-[12.5px] underline underline-offset-2"
-                  onClick={resetToLatest}
-                >
-                  최근 등록만 보기
-                </button>
+          <div className="flex flex-wrap items-baseline gap-2.5">
+            <h2 className="text-[23px]">{gridTitle}</h2>
+            <span className="text-[12.5px] text-faint">
+              {/*
+                기본 상태에는 총 개수를 붙이지 않는다. 여기 실린 건 "가장 최근 N개"라 전체 수를
+                나란히 두면 N개만 받아 놓고 전체 수를 세어 보인 것처럼 읽힌다.
+              */}
+              {usesListApi && pageInfo ? (
+                <>
+                  총 <b className="text-brand-700">{pageInfo.totalElement.toLocaleString()}</b>개
+                </>
+              ) : usesListApi ? (
+                " "
+              ) : (
+                "가장 최근에 등록된 기업"
               )}
+            </span>
+            {/* 전체 브라우즈로 넘어가면 돌아올 길이 없어진다 — 검색과 달리 지울 조건이 없어서다. */}
+            {request.browseAll && !filtered && (
+              <button
+                type="button"
+                className="text-brand-700 text-[12.5px] underline underline-offset-2"
+                onClick={resetToLatest}
+              >
+                최근 등록만 보기
+              </button>
+            )}
+          </div>
+
+          {/* 분류 칩과 업종 필터는 같은 줄에 둔다 — 둘 다 아래 격자만 갈아 끼우는 같은 손잡이다. */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-[7px] border-b border-line-soft pb-[18px]">
+            <div className="flex flex-wrap gap-[7px]">
+              <button
+                type="button"
+                className={`btn text-[13px] ${request.categoryId === null ? "btn-primary" : "btn-secondary"}`}
+                onClick={() => apply({ categoryId: null })}
+              >
+                전체
+              </button>
+              {topLevel.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`btn text-[13px] ${
+                    request.categoryId === category.id ? "btn-primary" : "btn-secondary"
+                  }`}
+                  onClick={() => apply({ categoryId: category.id })}
+                >
+                  {category.categoryName}
+                </button>
+              ))}
             </div>
 
             {/*
               디자인의 "지역 · 업종 필터" 자리. 지역은 검색 쿼리에 대응하는 파라미터가 없어서
               (categoryIds / industryIds / certificationIds 세 개뿐) 지금은 업종만 건다.
+
+              켜진 상태를 분류 칩처럼 .btn-primary(파란 판 + 흰 글씨)로 두지 않는다.
+              select 의 옵션 목록은 브라우저가 흰 판에 그리면서 글자색만 물려받아서,
+              흰 글씨가 되면 목록이 안 보인다. 그래서 여기만 brand-soft 배경 + 진한 글씨로 뒤집었다.
             */}
-            <div className={`btn ${request.industryId ? "btn-primary" : "btn-secondary"}`}>
+            <div
+              className={`btn ml-auto ${
+                request.industryId ? "border-brand bg-brand-soft text-brand-700" : "btn-secondary"
+              }`}
+            >
               <FilterIcon size={14} />
               <select
                 aria-label="업종 필터"
@@ -397,28 +446,6 @@ export default function HomePage() {
                 ))}
               </select>
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-[7px] border-b border-line-soft pb-[18px]">
-            <button
-              type="button"
-              className={`btn text-[13px] ${request.categoryId === null ? "btn-primary" : "btn-secondary"}`}
-              onClick={() => apply({ categoryId: null })}
-            >
-              전체
-            </button>
-            {topLevel.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                className={`btn text-[13px] ${
-                  request.categoryId === category.id ? "btn-primary" : "btn-secondary"
-                }`}
-                onClick={() => apply({ categoryId: category.id })}
-              >
-                {category.categoryName}
-              </button>
-            ))}
           </div>
 
           {usesListApi && error ? (
