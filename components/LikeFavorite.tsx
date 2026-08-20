@@ -6,8 +6,14 @@ import { ApiError } from "@/lib/api";
 import { favorite, like, unfavorite, unlike } from "@/lib/companies";
 import type { CompanySummary } from "@/types/api";
 
+/**
+ * 이 버튼이 회사에서 실제로 쓰는 건 세 필드뿐이다. 요약 카드(CompanySummary)와
+ * 상세 응답(CompanyPublicResponse)이 둘 다 들어와야 해서 전체 타입 대신 이 부분집합을 받는다.
+ */
+export type LikeTarget = Pick<CompanySummary, "id" | "likedByMe" | "favoritedByMe">;
+
 type Props = {
-  company: CompanySummary;
+  company: LikeTarget;
   /** 실패(주로 비로그인)를 화면 위쪽에 한 번만 띄우기 위해 부모로 올린다. */
   onError: (message: string) => void;
   /** 아이콘 픽셀 크기. 버튼 크기는 className 으로 조절한다. */

@@ -79,6 +79,13 @@ type RequestOptions = {
   body?: unknown;
   query?: Record<string, QueryValue>;
   signal?: AbortSignal;
+  /**
+   * 403 을 받았을 때 새 CSRF 토큰으로 한 번 재시도할지. 기본 true.
+   *
+   * **403 이 그 자체로 업무상 답인 호출은 꺼야 한다** — 로그인의 "정지 계정"이 그렇다.
+   * 켜 두면 실패한 로그인이 매번 두 번씩 서버에 도달한다(자세한 이유는 아래 재시도 블록).
+   */
+  retryOnForbidden?: boolean;
 };
 
 async function send(path: string, options: RequestOptions, csrf: Csrf | null): Promise<Response> {
@@ -100,11 +107,20 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const method = options.method ?? "GET";
   const needsCsrf = method !== "GET";
 
+  // 캐시에 있던 토큰을 재사용했는지. 아래 재시도 판단의 근거라 미리 기억해 둔다.
+  const reusedToken = needsCsrf && csrfCache !== null;
   let csrf = needsCsrf ? (csrfCache ?? (await loadCsrf())) : null;
   let res = await send(path, options, csrf);
 
-  // 403 은 "권한 없음"일 수도, "CSRF 토큰이 낡음"일 수도 있다. 후자면 새 토큰으로 한 번만 재시도한다.
-  if (res.status === 403 && needsCsrf) {
+  /*
+   * 403 은 "권한 없음"일 수도 "CSRF 토큰이 낡음"일 수도 있다. **백엔드가 둘을 같은 본문으로 주므로
+   * 화면에서는 구분할 수 없다**(CSRF 실패도 AccessDeniedException 이라 같은 핸들러를 탄다).
+   * 그래서 낡은 토큰일 수 있을 때만 새 토큰으로 한 번 재시도한다.
+   *
+   *  - 이 요청에서 막 받아온 토큰이면 세션과 어긋날 수가 없다 — 다시 받아 봐야 같은 답이라 그냥 낭비다.
+   *  - retryOnForbidden=false 는 403 자체가 업무상 의미인 호출이 끄는 스위치다(로그인의 '정지 계정').
+   */
+  if (res.status === 403 && reusedToken && options.retryOnForbidden !== false) {
     csrf = await loadCsrf();
     res = await send(path, options, csrf);
   }

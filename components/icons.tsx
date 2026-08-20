@@ -133,3 +133,33 @@ export function FilterIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/** 공유(링크 복사) — 세 점을 잇는 노드 모양 */
+export function ShareIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="18" cy="5" r="2.6" />
+      <circle cx="6" cy="12" r="2.6" />
+      <circle cx="18" cy="19" r="2.6" />
+      <path d="M8.4 10.8l7.2-4.1M8.4 13.2l7.2 4.1" />
+    </Svg>
+  );
+}
+
+/**
+ * 소개 영상. 다른 아이콘과 달리 선이 아니라 채운 삼각형이라 Svg 헬퍼(stroke)를 쓰지 않는다.
+ */
+export function PlayIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+      className={className}
+    >
+      <path d="M8 5l12 7-12 7z" />
+    </svg>
+  );
+}

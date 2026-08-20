@@ -246,7 +246,12 @@ export type CompanyPublicResponse = {
   id: number;
   companyName: string;
   ceoName: string;
-  establishmentDate: string; // yyyy-MM-dd
+  /**
+   * yyyy-MM-dd. **null 이 될 수 있다** — Company 엔티티에서 이 컬럼만 NOT NULL 이 아니다
+   * (companyName·ceoName 은 필수). 개업일자는 국세청 인증본에서 채워지는 값이라 등록 경로에
+   * 따라 비어 있을 수 있고, 시드 C20 이 그 표본이다.
+   */
+  establishmentDate: string | null;
   // postalCode 는 없다 — 백엔드가 공개 응답에서 의도적으로 뺐다(화면에 안 쓰이고 도로명·지번으로 충분).
   roadAddress: string | null;
   jibunAddress: string | null;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import CardSlot from "@/components/CardSlot";
 import Cover from "@/components/Cover";
 import LikeFavorite from "@/components/LikeFavorite";
@@ -33,7 +34,11 @@ export default function FeaturedCard({ company, onError }: Props) {
           <span className="tag absolute top-3 left-3 bg-brand font-medium text-white">
             FEATURED
           </span>
-          <div className="absolute top-2.5 right-2.5 flex gap-1.5">
+          {/*
+            z 를 주는 이유: 아래 회사명 링크가 카드 전체를 덮고 있고, 그 덮개는 DOM 에서
+            이 버튼들보다 뒤에 온다. z 가 없으면 덮개가 위에 깔려 좋아요를 눌러도 상세로 넘어간다.
+          */}
+          <div className="absolute top-2.5 right-2.5 z-[2] flex gap-1.5">
             <LikeFavorite
               company={company}
               onError={onError}
@@ -49,8 +54,14 @@ export default function FeaturedCard({ company, onError }: Props) {
         <div className="flex flex-col gap-2.5 px-4 pt-[34px] pb-4">
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="truncate text-[19px] leading-tight">
-                {company.companyName}
+              <h3 className="min-w-0 truncate text-[19px] leading-tight">
+                {/* 카드 전체가 클릭 대상이다 — 덮개 방식의 이유는 CompanyCard 주석 참고. */}
+                <Link
+                  href={`/companies/${company.id}`}
+                  className="text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-brand"
+                >
+                  {company.companyName}
+                </Link>
               </h3>
               {company.verified && (
                 <span

@@ -232,6 +232,15 @@
   }
 
   /*
+   * 상세 화면의 칩. 카드에 빼곡히 넣는 요약 칩(.tag)과 같은 어휘지만, 지면이 넓고 정보가 본문이라
+   * 디자인이 한 단계 큰 치수를 쓴다. 색·모양은 그대로 두고 크기만 바꾼다.
+   */
+  .tag-lg {
+    font-size: 12px;
+    padding: 4px 11px;
+  }
+
+  /*
    * 칩 줄의 자리. 칩 수가 회사마다 달라 높이가 들쭉날쭉하면 격자에서 카드 아랫단이 어긋난다.
    * 접기 한도(TagRow 의 MAX_LINES)와 같은 두 줄 자리를 늘 비워 두고, 칩이 없어도 유지한다.
    * 값은 .tag 에서 나온다 — 글자 11px × line-height 1.5 + 세로 패딩 6 + 테두리 2, 줄 간격 5px.
@@ -253,6 +262,11 @@
     border: 1px solid rgba(0, 98, 245, 0.32);
     border-radius: 4px;
     padding: 1px 7px;
+  }
+  /* 남색 히어로 위에서는 브랜드 파랑이 배경에 묻는다 — 밝은 파랑으로 뒤집는다. */
+  .ind-dark {
+    color: var(--color-brand-300);
+    border-color: rgba(166, 197, 255, 0.42);
   }
 
   /* ── 회사 카드 ─────────────────────────────────────────────── */
@@ -425,6 +439,23 @@
     outline: none;
   }
 
+  /* ── 폼 입력 ───────────────────────────────────────────────
+     히어로 검색(.srch)과는 다른 자리다 — 저쪽은 테두리 없이 검색창 안에 얹히는 입력이고,
+     이건 라벨이 붙는 일반 폼 칸이다. 포커스 링은 base 레이어의 :focus-visible 이 준다. */
+  .field {
+    width: 100%;
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+    background: #fff;
+    padding: 9px 12px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--color-ink);
+  }
+  .field::placeholder {
+    color: var(--color-faint);
+  }
+
   /* ── 가로 레일 ─────────────────────────────────────────────── */
   .railtrack {
     overflow-x: auto;
@@ -503,5 +534,82 @@
       color-mix(in srgb, var(--color-ink) 3%, transparent) 0 10px,
       transparent 10px 20px
     );
+  }
+
+  /* ── 기업 상세 ─────────────────────────────────────────────────
+     정본은 Claude Design 의 "플랜틀리 기업 상세페이지 v2".
+     원본에 있는 모서리 등록 마크(.corner)와 방안지 격자(.plate)는 메인에서 뺀 것과 같은 이유로
+     여기서도 쓰지 않는다 — 되살릴 거면 두 화면을 함께 되살린다. */
+
+  /* 섹션 제목 옆·카드 머리의 작은 대문자 라벨(Overview, Capability, 6건 …) */
+  .kick {
+    font-family: var(--font-heading);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+  }
+
+  /* 상단 섹션 탭 */
+  .tabbtn {
+    flex: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    padding: 13px 15px;
+    font-family: var(--font-heading);
+    font-size: 15.5px;
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+  .tabbtn:hover {
+    color: var(--color-brand);
+  }
+  .tabbtn.on {
+    color: var(--color-brand);
+    border-bottom-color: var(--color-brand);
+  }
+
+  /* 사양 표 한 줄 — 라벨은 왼쪽, 값은 오른쪽 끝에 붙고 점선으로 나뉜다. */
+  .srow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px dotted color-mix(in srgb, var(--color-ink) 22%, transparent);
+  }
+  .srow:last-child {
+    border-bottom: 0;
+  }
+  .skey {
+    flex: none;
+    font-family: var(--font-heading);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--color-faint);
+  }
+  .sval {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--color-ink);
+    text-align: right;
+    overflow-wrap: break-word;
+  }
+
+  /*
+   * 갤러리 사진 한 장. 격자가 아니라 본문 폭을 꽉 채우는 세로 띠라 높이를 정하지 않는다 —
+   * 사진 비율이 제각각인데 상자를 못 박으면 설비 사진이 잘린다(그게 이 섹션의 내용이다).
+   */
+  .gshot {
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+    overflow: hidden;
+    background: repeating-linear-gradient(135deg, #e7eefc 0 10px, #eff4fd 10px 20px);
+  }
+  .gshot img {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 }

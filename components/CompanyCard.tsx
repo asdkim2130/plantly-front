@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import CardSlot from "@/components/CardSlot";
 import LikeFavorite from "@/components/LikeFavorite";
 import Logo from "@/components/Logo";
@@ -27,7 +28,22 @@ export default function CompanyCard({ company, onError }: Props) {
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <h3 className="truncate text-[18px] leading-tight">{company.companyName}</h3>
+              <h3 className="min-w-0 truncate text-[18px] leading-tight">
+                {/*
+                  카드 전체가 상세로 가는 클릭 대상이다. 카드를 통째로 <Link> 로 감싸는 대신
+                  회사명 링크를 카드 크기만큼 늘린다(::after 로 카드를 덮는다) — 이유가 둘이다.
+                   1. 좋아요·즐겨찾기가 <button> 이라, 링크로 감싸면 링크 안에 버튼이 들어간다(중첩 금지).
+                   2. 스크린리더의 링크 목록에 "회사명"으로 잡힌다. 카드를 감싸면 카드 안 글자가
+                      전부 링크 이름이 되어 읽어 주기 어려워진다.
+                  덮개의 기준은 .blueprint 의 position:relative 다.
+                */}
+                <Link
+                  href={`/companies/${company.id}`}
+                  className="text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-brand"
+                >
+                  {company.companyName}
+                </Link>
+              </h3>
               {/* verified = 에디터 선정 큐레이션. 사업자 확인(businessVerified)과는 다른 축이다. */}
               {company.verified && (
                 <span title="플랜틀리 검수 완료" className="shrink-0 text-brand">
@@ -63,14 +79,18 @@ export default function CompanyCard({ company, onError }: Props) {
         </div>
         <div className="mt-auto flex items-center justify-between border-t border-line-soft pt-[11px]">
           {/*
-          상세 화면이 아직 없어 비워 두는 자리. 분류 '이름'은 위 TagRow 가 칩으로 그리므로
-          여기서는 개수만 적는다 — 같은 값을 한 카드에 두 번 찍지 않기 위해서다.
-          상세가 붙으면 "기업 상세 →" 링크로 바꾼다.
-        */}
-          <span className="font-heading text-[11px] tracking-[0.08em] text-faint uppercase">
-            {company.categoryNames.length > 0 ? `분류 ${company.categoryNames.length}개` : "미분류"}
+            "여기를 누르면 된다"를 보여주는 표시일 뿐, 링크가 아니다 — 카드 전체가 이미 링크라
+            여기에 <a> 를 또 두면 스크린리더의 링크 목록에 같은 목적지가 "기업 상세"라는
+            쓸모없는 이름으로 한 번 더 들어간다. 클릭은 위의 덮개가 받는다.
+          */}
+          <span
+            aria-hidden
+            className="font-heading text-[11px] tracking-[0.08em] text-faint uppercase"
+          >
+            기업 상세 →
           </span>
-          <div className="flex gap-1.5">
+          {/* 덮개보다 위로 올린다. 안 그러면 좋아요·즐겨찾기를 눌러도 상세로 넘어간다. */}
+          <div className="relative z-[1] flex gap-1.5">
             <LikeFavorite company={company} onError={onError} />
           </div>
         </div>

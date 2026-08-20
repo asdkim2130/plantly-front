@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Cover from "@/components/Cover";
 import LikeFavorite from "@/components/LikeFavorite";
 import Logo from "@/components/Logo";
@@ -58,7 +59,19 @@ export default function SpotlightCard({ company, kicker, onError }: Props) {
           />
           <div className="min-w-0">
             <div className="flex items-center gap-[7px]">
-              <h3 className="truncate text-[25px] leading-[1.15]">{company.companyName}</h3>
+              <h3 className="min-w-0 truncate text-[25px] leading-[1.15]">
+                {/*
+                  이 카드에는 "기업 상세 보기" 버튼이 따로 있지만, 카드 본문을 눌렀을 때도 같은 곳으로
+                  가는 게 맞다 — 덮개 방식의 이유는 CompanyCard 주석 참고.
+                  (레일은 드래그 스크롤이 아니라 화살표·점·휠로 넘기므로 덮개가 드래그를 가로채지 않는다.)
+                */}
+                <Link
+                  href={`/companies/${company.id}`}
+                  className="text-inherit no-underline after:absolute after:inset-0 after:content-['']"
+                >
+                  {company.companyName}
+                </Link>
+              </h3>
               {company.verified && (
                 <span title="플랜틀리 검수 완료" className="sl-kicker shrink-0">
                   <VerifiedIcon size={16} />
@@ -87,11 +100,11 @@ export default function SpotlightCard({ company, kicker, onError }: Props) {
           그래서 이 카드만 접지 않고 카테고리·태그를 전부 펼쳐 둔다(디자인 의도와도 맞는다).
         */}
         <TagRow company={company} dark expand />
-        <div className="mt-auto flex gap-2 pt-2">
-          {/* 상세 화면이 아직 없어 비활성이다. 라우트가 생기면 Link 로 바꾼다. */}
-          <button type="button" className="btn sl-cta" disabled title="상세 화면 준비 중">
+        {/* 덮개보다 위로 올린다 — 안 그러면 좋아요·즐겨찾기를 눌러도 상세로 넘어간다. */}
+        <div className="relative z-[1] mt-auto flex gap-2 pt-2">
+          <Link href={`/companies/${company.id}`} className="btn sl-cta">
             기업 상세 보기
-          </button>
+          </Link>
           <LikeFavorite
             company={company}
             onError={onError}

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
+import HeaderNav from "@/components/HeaderNav";
+import SessionProvider from "@/components/SessionProvider";
 import "./globals.css";
 
 /*
@@ -35,49 +37,35 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           바깥 바탕(--color-page)을 판과 같은 흰색으로 맞추고 좌우 테두리도 뺐다.
           폭 제한(max-w)만 남아서 내용이 가운데 정렬되고, 양옆은 이어진 흰 바탕이다.
         */}
-        <div className="mx-auto flex min-h-screen w-full max-w-[1180px] flex-col bg-white">
-          <header className="flex items-center gap-6 border-b border-line px-4 py-3.5 sm:px-[30px]">
-            <Link href="/" className="mr-auto flex items-center" aria-label="플랜틀리 홈">
-              <Image
-                src="/plantly-logo.png"
-                alt="플랜틀리"
-                width={3103}
-                height={951}
-                priority
-                className="h-[26px] w-auto object-contain"
-              />
-            </Link>
+        {/*
+          로그인 상태는 헤더와 화면들이 함께 쓰는 값이라 여기서 한 번만 읽는다.
+          서버 컴포넌트인 이 레이아웃이 클라이언트 컴포넌트를 렌더하는 건 정상적인 방향이다.
+        */}
+        <SessionProvider>
+          <div className="mx-auto flex min-h-screen w-full max-w-[1180px] flex-col bg-white">
+            <header className="flex items-center gap-6 border-b border-line px-4 py-3.5 sm:px-[30px]">
+              <Link href="/" className="mr-auto flex items-center" aria-label="플랜틀리 홈">
+                <Image
+                  src="/plantly-logo.png"
+                  alt="플랜틀리"
+                  width={3103}
+                  height={951}
+                  priority
+                  className="h-[26px] w-auto object-contain"
+                />
+              </Link>
 
-            {/* 좁은 화면에서는 메뉴를 접는다 — 모바일 내비게이션은 화면이 더 생기면 만든다. */}
-            <Link
-              href="/"
-              className="hidden text-sm whitespace-nowrap text-ink no-underline md:inline"
-            >
-              기업 찾기
-            </Link>
-            {/* 아직 없는 화면들. 라우트가 생기면 Link 로 바꾼다. */}
-            <span className="hidden cursor-not-allowed text-sm whitespace-nowrap text-muted md:inline">
-              카테고리
-            </span>
-            <span className="hidden cursor-not-allowed text-sm whitespace-nowrap text-muted md:inline">
-              기업정보 등록
-            </span>
-            <button
-              type="button"
-              className="btn btn-primary whitespace-nowrap"
-              disabled
-              title="로그인 화면 준비 중"
-            >
-              로그인
-            </button>
-          </header>
+              {/* 메뉴와 로그인 상태는 세션에 따라 바뀌어서 클라이언트 컴포넌트로 떼어 놨다. */}
+              <HeaderNav />
+            </header>
 
-          <main className="flex-1">{children}</main>
+            <main className="flex-1">{children}</main>
 
-          <footer className="border-t border-line px-4 py-5 sm:px-[30px] text-[12.5px] text-faint">
-            플랜틀리 · 개발용 로컬 환경
-          </footer>
-        </div>
+            <footer className="border-t border-line px-4 py-5 sm:px-[30px] text-[12.5px] text-faint">
+              플랜틀리 · 개발용 로컬 환경
+            </footer>
+          </div>
+        </SessionProvider>
       </body>
     </html>
   );
