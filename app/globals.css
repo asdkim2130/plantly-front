@@ -35,15 +35,17 @@
  * 폰트는 next/font 가 만들어 준 CSS 변수를 가리키므로 inline 블록에 둔다
  * (@theme 은 값을 정적으로 굳히지만 @theme inline 은 var() 참조를 그대로 남긴다).
  *
- * Barlow / Barlow Condensed 에는 한글 글리프가 없어서 한글은 뒤의 시스템 폰트로 떨어진다.
- * 디자인 원본도 같은 방식(라틴은 Barlow, 한글은 Noto Sans KR)이라 결과가 어긋나지 않는다.
+ * 본문은 Noto Sans KR 한 벌로 한글·라틴을 다 그린다. 제목·라벨·숫자만 Barlow Condensed 를 앞에
+ * 세우고, 그 안의 한글은 콘덴스드에 글리프가 없으니 바로 뒤 Noto Sans KR 이 이어받는다
+ * (여기서 Noto 를 빼면 제목의 한글만 시스템 폰트로 떨어져 본문과 얼굴이 갈린다).
+ * 시스템 폰트들은 웹폰트가 아직 안 왔거나 실패했을 때를 위한 폴백이다.
  */
 @theme inline {
   --font-body:
-    var(--font-barlow), "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    var(--font-noto-kr), "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
   --font-heading:
-    var(--font-barlow-condensed), "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui,
-    sans-serif;
+    var(--font-barlow-condensed), var(--font-noto-kr), "Pretendard", "Malgun Gothic",
+    "Apple SD Gothic Neo", system-ui, sans-serif;
 }
 
 @layer base {
@@ -178,7 +180,7 @@
     border: 1px solid var(--color-line);
     border-radius: 999px;
     background: #fff;
-    font-size: 12.5px;
+    font-size: 13px;
     color: var(--color-muted);
     cursor: pointer;
     white-space: nowrap;
@@ -256,7 +258,7 @@
     align-items: center;
     gap: 4px;
     font-family: var(--font-heading);
-    font-size: 11.5px;
+    font-size: 12px;
     letter-spacing: 0.08em;
     color: var(--color-brand-700);
     border: 1px solid rgba(0, 98, 245, 0.32);
@@ -558,7 +560,7 @@
     background: transparent;
     padding: 13px 15px;
     font-family: var(--font-heading);
-    font-size: 15.5px;
+    font-size: 16px;
     color: var(--color-muted);
     cursor: pointer;
   }
@@ -590,7 +592,7 @@
     color: var(--color-faint);
   }
   .sval {
-    font-size: 13.5px;
+    font-size: 14px;
     line-height: 1.5;
     color: var(--color-ink);
     text-align: right;

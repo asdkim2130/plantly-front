@@ -52,7 +52,7 @@ export default function CompanyCard({ company, onError }: Props) {
               )}
             </div>
             {/* 한 줄짜리 소개도 두 줄 자리를 차지하게 둔다 — 카드마다 아랫단이 어긋나지 않게. */}
-            <p className="mt-[3px] line-clamp-2 min-h-[2lh] text-[12.5px] leading-[1.45] text-muted">
+            <p className="mt-[3px] line-clamp-2 min-h-[2lh] text-[13px] leading-[1.45] text-muted">
               {company.introTitle ?? "소개 문구가 아직 없습니다."}
             </p>
           </div>

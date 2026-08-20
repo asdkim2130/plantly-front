@@ -72,7 +72,7 @@ export default function FeaturedCard({ company, onError }: Props) {
                 </span>
               )}
             </div>
-            <p className="mt-1 line-clamp-2 text-[12.5px] leading-[1.45] text-muted">
+            <p className="mt-1 line-clamp-2 text-[13px] leading-[1.45] text-muted">
               {company.introTitle ?? "소개 문구가 아직 없습니다."}
             </p>
           </div>

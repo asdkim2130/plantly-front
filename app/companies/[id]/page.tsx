@@ -315,7 +315,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
               </button>
             </div>
 
-            <p className="mt-0.5 text-[11.5px] leading-[1.5] text-white/45">
+            <p className="mt-0.5 text-[12px] leading-[1.5] text-white/45">
               {inquiry?.note ?? "등록된 담당자 연락처가 없어 문의를 보낼 수 없습니다."}
             </p>
           </div>
@@ -326,7 +326,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
 
       {/* 좋아요·즐겨찾기 실패(주로 비로그인)와 링크 복사 결과가 같은 자리에 뜬다. */}
       {notice && (
-        <p className="border-b border-line-soft px-4 py-2.5 text-[12.5px] text-brand-700 sm:px-[30px]">
+        <p className="border-b border-line-soft px-4 py-2.5 text-[13px] text-brand-700 sm:px-[30px]">
           {notice}
         </p>
       )}
@@ -337,7 +337,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
             <Section id="overview" title="기업 소개" kicker="Overview">
               {company.content && (
                 // 줄바꿈만 살린다 — 서버가 내려주는 건 서식 없는 평문이라 HTML 로 해석하지 않는다.
-                <p className="text-[14.5px] leading-[1.8] whitespace-pre-line text-ink/80 text-pretty">
+                <p className="text-[15px] leading-[1.8] whitespace-pre-line text-ink/80 text-pretty">
                   {company.content}
                 </p>
               )}
@@ -366,12 +366,12 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
                   <span className="grid size-[42px] shrink-0 place-items-center rounded-lg bg-brand-soft text-brand">
                     <PlayIcon size={18} />
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="font-heading block text-[17px] text-ink">기업 소개 영상</span>
-                    <span className="mt-0.5 block text-[12.5px] text-muted">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-[17px] text-ink">기업 소개 영상</h3>
+                    <p className="mt-0.5 text-[13px] text-muted">
                       회사가 등록한 영상이 새 탭에서 열립니다
-                    </span>
-                  </span>
+                    </p>
+                  </div>
                   <span className="btn btn-secondary">영상 보기</span>
                 </a>
               )}
@@ -483,7 +483,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
                       {company.representativeReference.achievements && (
                         <div className="min-w-0 flex-[1.6] sm:border-r sm:border-line-soft sm:pr-4">
                           <div className="skey mb-1.5">성과</div>
-                          <p className="text-[13.5px] leading-[1.6] text-ink/80">
+                          <p className="text-[14px] leading-[1.6] text-ink/80">
                             {company.representativeReference.achievements}
                           </p>
                         </div>
@@ -491,7 +491,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
                       {company.representativeReference.partners && (
                         <div className="min-w-0 flex-1 sm:pl-4">
                           <div className="skey mb-1.5">참여사</div>
-                          <p className="text-[13.5px] leading-[1.6] text-ink/80">
+                          <p className="text-[14px] leading-[1.6] text-ink/80">
                             {company.representativeReference.partners}
                           </p>
                         </div>
@@ -617,7 +617,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
             <div className="blueprint flex flex-col gap-2 bg-white p-[18px]">
               <span className="kick">After service</span>
               <h2 className="text-[17px]">A/S 안내</h2>
-              <p className="text-[13.5px] leading-[1.6] text-ink/75 whitespace-pre-line">
+              <p className="text-[14px] leading-[1.6] text-ink/75 whitespace-pre-line">
                 {company.asInfo}
               </p>
             </div>
@@ -626,7 +626,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
           {company.verified && (
             <div className="blueprint flex flex-col gap-3 bg-brand-900 p-[18px] text-white">
               <span className="kick text-brand-300">Verified by Plantly</span>
-              <p className="text-[13.5px] leading-[1.6] text-white/80">
+              <p className="text-[14px] leading-[1.6] text-white/80">
                 플랜틀리 에디터가 직접 확인하고 소개하는 기업입니다.
               </p>
               {/*
@@ -678,7 +678,7 @@ function HeroStats({ company }: { company: CompanyPublicResponse }) {
             {stat.value}
             {stat.unit && <span className="text-[15px] text-brand-300">{stat.unit}</span>}
           </div>
-          <div className="mt-0.5 text-[11.5px] text-white/50">{stat.label}</div>
+          <div className="mt-0.5 text-[12px] text-white/50">{stat.label}</div>
         </div>
       ))}
     </div>
@@ -714,12 +714,18 @@ function Section({
   );
 }
 
-/** 소재·장비처럼 "이름 목록" 하나만 담는 카드. */
+/**
+ * 소재·장비처럼 "이름 목록" 하나만 담는 카드.
+ *
+ * 제목은 `font-heading` 유틸리티를 붙인 div 가 아니라 진짜 heading 요소여야 한다 — 글꼴만 따라오고
+ * 굵기(600)·자간은 base 레이어의 h1~h4 규칙에서 오기 때문에, div 로 두면 옆 카드(보유 인증·공급
+ * 가능 지역)의 제목만 굵어 보인다.
+ */
 function ChipCard({ kicker, title, items }: { kicker: string; title: string; items: string[] }) {
   return (
     <div className="blueprint bg-white p-[18px]">
       <div className="kick mb-2.5">{kicker}</div>
-      <div className="font-heading mb-3 text-[18px]">{title}</div>
+      <h3 className="mb-3 text-[18px]">{title}</h3>
       <div className="flex flex-wrap gap-[7px]">
         {items.map((item) => (
           <span key={item} className="tag tag-lg tag-neutral">

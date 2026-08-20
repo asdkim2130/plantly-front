@@ -57,7 +57,7 @@ export default function StatsPanel({
         ) : (
           <ul className="flex flex-col gap-[5px]">
             {recent.map((company) => (
-              <li key={company.id} className="flex items-baseline gap-1.5 text-[12.5px]">
+              <li key={company.id} className="flex items-baseline gap-1.5 text-[13px]">
                 {/* 이름이 길어도 패널 폭을 밀지 않게 한 줄로 자른다. */}
                 <span className="truncate text-ink">{company.companyName}</span>
                 {/* 업종은 보조 정보라 자리가 있을 때만 — 좁아지면 이름이 우선이다. */}
@@ -85,7 +85,7 @@ function Stat({ value, label }: { value: number | null; label: string }) {
           {value.toLocaleString()}
         </div>
       )}
-      <div className="mt-[3px] text-[11.5px] text-muted">{label}</div>
+      <div className="mt-[3px] text-[12px] text-muted">{label}</div>
     </div>
   );
 }

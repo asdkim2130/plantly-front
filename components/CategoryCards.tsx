@@ -46,12 +46,12 @@ export default function CategoryCards({ categories }: Props) {
               {String(i + 1).padStart(2, "0")}
             </span>
             <span className="font-heading text-[21px]">{category.categoryName}</span>
-            <span className="line-clamp-2 text-[12.5px] leading-[1.5] text-muted">
+            <span className="line-clamp-2 text-[13px] leading-[1.5] text-muted">
               {children.length > 0 ? children.slice(0, 4).join(" · ") : "하위 분류 없음"}
             </span>
             {/* 화살표(→)는 뺀다 — 지금은 아무 데도 가지 않는다. 목록 라우트가 생기면 링크와 함께 돌아온다. */}
             {children.length > 0 && (
-              <span className="text-brand-700 mt-0.5 text-[11.5px]">
+              <span className="text-brand-700 mt-0.5 text-[12px]">
                 하위 {children.length}개 분류
               </span>
             )}

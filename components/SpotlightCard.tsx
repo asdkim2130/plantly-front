@@ -85,7 +85,7 @@ export default function SpotlightCard({ company, kicker, onError }: Props) {
                   {industry}
                 </span>
               )}
-              <span className="sl-meta inline-flex items-center gap-1 text-[12.5px]">
+              <span className="sl-meta inline-flex items-center gap-1 text-[13px]">
                 <PinIcon size={13} />
                 {company.address ?? "주소 미등록"}
               </span>

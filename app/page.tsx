@@ -288,7 +288,7 @@ export default function HomePage() {
         {notice && (
           <p
             role="status"
-            className="bg-brand-soft text-brand-700 -mb-4 rounded-lg px-3 py-2 text-[12.5px]"
+            className="bg-brand-soft text-brand-700 -mb-4 rounded-lg px-3 py-2 text-[13px]"
           >
             {notice}
           </p>
@@ -363,7 +363,7 @@ export default function HomePage() {
         <section id="companies" className="flex scroll-mt-4 flex-col gap-[13px]">
           <div className="flex flex-wrap items-baseline gap-2.5">
             <h2 className="text-[23px]">{gridTitle}</h2>
-            <span className="text-[12.5px] text-faint">
+            <span className="text-[13px] text-faint">
               {/*
                 기본 상태에는 총 개수를 붙이지 않는다. 여기 실린 건 "가장 최근 N개"라 전체 수를
                 나란히 두면 N개만 받아 놓고 전체 수를 세어 보인 것처럼 읽힌다.
@@ -382,7 +382,7 @@ export default function HomePage() {
             {request.browseAll && !filtered && (
               <button
                 type="button"
-                className="text-brand-700 text-[12.5px] underline underline-offset-2"
+                className="text-brand-700 text-[13px] underline underline-offset-2"
                 onClick={resetToLatest}
               >
                 최근 등록만 보기
@@ -531,7 +531,7 @@ function EmptyState({ filtered, onReset }: { filtered: boolean; onReset: () => v
       <p className="font-heading text-lg">
         {filtered ? "조건에 맞는 기업이 없습니다." : "등록된 기업이 없습니다."}
       </p>
-      <p className="text-[12.5px] text-muted">
+      <p className="text-[13px] text-muted">
         {filtered
           ? "검색어를 줄이거나 필터를 풀어 보세요."
           : "백엔드 시드를 심으면 여기에 기업이 표시됩니다."}

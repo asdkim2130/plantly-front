@@ -71,7 +71,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
     <div className="px-4 py-12 sm:px-[30px]">
       <div className="mx-auto w-full max-w-[380px]">
         <h1 className="text-[26px] leading-tight">로그인</h1>
-        <p className="mt-2 text-[12.5px] text-muted">
+        <p className="mt-2 text-[13px] text-muted">
           좋아요·즐겨찾기와 기업정보 등록은 로그인 후 사용할 수 있습니다.
         </p>
 
@@ -116,7 +116,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
             remember=true 면 서버가 30일 remember-me 쿠키를 하나 더 발급한다(세션 쿠키와 별개).
             기본값은 꺼짐 — 공용 PC 에서 무심코 켜지는 쪽보다 안전하다.
           */}
-          <label className="flex w-fit items-center gap-2 text-[12.5px] text-muted">
+          <label className="flex w-fit items-center gap-2 text-[13px] text-muted">
             <input
               type="checkbox"
               checked={remember}
@@ -128,7 +128,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 
           {/* 서버가 준 문장을 그대로 보여준다. role="alert" 라 스크린리더가 바뀐 순간 읽는다. */}
           {error && (
-            <p role="alert" className="text-[12.5px] text-red-600">
+            <p role="alert" className="text-[13px] text-red-600">
               {error}
             </p>
           )}
@@ -139,7 +139,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
         </form>
 
         {/* 회원가입 화면은 아직 없다. 백엔드(POST /users/sign-up)는 이미 있으므로 라우트만 생기면 링크로 바꾼다. */}
-        <p className="mt-6 border-t border-line pt-4 text-[12.5px] text-faint">
+        <p className="mt-6 border-t border-line pt-4 text-[13px] text-faint">
           계정이 없으신가요? 회원가입 화면은 준비 중입니다.
         </p>
       </div>
