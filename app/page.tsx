@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import CategoryCards from "@/components/CategoryCards";
 import CompanyCard from "@/components/CompanyCard";
@@ -42,13 +43,6 @@ type Request = {
   categoryId: number | null;
   industryId: number | null;
   page: number;
-  /**
-   * 조건 없이 전체 목록을 훑는 모드. 기본 격자("최근 등록")에서 "전체 기업 보기"를 누르면 켜진다.
-   *
-   * 기본 상태와 이 모드는 보여주는 대상이 겹치지만 **정렬 규칙이 다르다** — 기본은 순수 최신순이고
-   * 전체 브라우즈는 목록 API 라 유료 기업이 상위로 온다. 그래서 같은 화면의 두 상태로 나눠 둔다.
-   */
-  browseAll: boolean;
 };
 
 /** 완료된 목록 요청 1건의 결과. key 가 현재 조건과 다르면 아직 로딩 중이라는 뜻이다. */
@@ -59,8 +53,7 @@ type Listing = {
   error: string;
 };
 
-const keyOf = (r: Request) =>
-  `${r.keyword}|${r.categoryId}|${r.industryId}|${r.page}|${r.browseAll}`;
+const keyOf = (r: Request) => `${r.keyword}|${r.categoryId}|${r.industryId}|${r.page}`;
 
 /**
  * 첫 화면 — 히어로 검색 + 대분류 진입 + 스포트라이트/추천 레일 + 기업 격자.
@@ -139,13 +132,17 @@ export default function HomePage() {
     categoryId: null,
     industryId: null,
     page: 1,
-    browseAll: false,
   });
   const [listing, setListing] = useState<Listing | null>(null);
 
+  /**
+   * 목록 API 를 쓰는 상태인지. 아니면 showcase 의 latest 를 그대로 그린다.
+   *
+   * 조건 없이 전체를 훑는 건 이 화면의 일이 아니다 — 정렬 규칙이 다르고(유료 상위) 페이지가
+   * 이어지므로 `/companies` 목록 화면이 맡는다. 여기 격자는 큐레이션(최근 등록)과 그 위 손잡이로
+   * 좁힌 결과까지다.
+   */
   const filtered = Boolean(request.keyword || request.categoryId || request.industryId);
-  // 목록 API 를 쓰는 상태인지. 아니면 showcase 의 latest 를 그대로 그린다.
-  const usesListApi = filtered || request.browseAll;
 
   /**
    * 큐레이션 레일(스포트라이트·추천)을 접을지 — **검색어가 있을 때만** 접는다.
@@ -168,8 +165,8 @@ export default function HomePage() {
   const error = listing?.error ?? "";
 
   useEffect(() => {
-    // 기본 상태(조건 없음 + 브라우즈 아님)는 showcase 로 이미 채워져 있다 — 목록 API 를 부르지 않는다.
-    if (!usesListApi) return;
+    // 조건이 없으면 showcase 로 이미 채워져 있다 — 목록 API 를 부르지 않는다.
+    if (!filtered) return;
 
     const controller = new AbortController();
 
@@ -208,15 +205,15 @@ export default function HomePage() {
       });
 
     return () => controller.abort();
-  }, [key, request, usesListApi]);
+  }, [key, request, filtered]);
 
-  /** 조건이 바뀌면 항상 첫 페이지부터 다시 담는다. browseAll 은 별도로만 켜고 끈다. */
+  /** 조건이 바뀌면 항상 첫 페이지부터 다시 담는다. */
   const apply = (patch: Partial<Omit<Request, "page">>) =>
     setRequest((prev) => ({ ...prev, ...patch, page: 1 }));
 
   /** 조건을 모두 지우고 기본 상태(최근 등록)로 돌아간다. */
   const resetToLatest = () =>
-    setRequest({ keyword: "", categoryId: null, industryId: null, page: 1, browseAll: false });
+    setRequest({ keyword: "", categoryId: null, industryId: null, page: 1 });
 
   const topLevel = categories.filter((c) => c.depth === 1);
   const hasMore = pageInfo ? pageInfo.pageNumber < pageInfo.totalPage : false;
@@ -230,17 +227,11 @@ export default function HomePage() {
       ? `${activeCategory.categoryName} 기업`
       : activeIndustry
         ? `${activeIndustry.industryName} 기업`
-        : request.browseAll
-          ? "전체 기업"
-          : "최근 등록 기업";
+        : "최근 등록 기업";
 
   // 격자에 그릴 카드와 로딩 상태는 모드에 따라 출처가 다르다.
-  const cards = usesListApi ? companies : latest;
-  const cardsLoading = usesListApi ? loading && !loadingMore : showcase === null;
-
-  // 기본 상태에서 "전체 기업 보기"를 띄울지. 자리 밖에 더 있는지는 showcase 가 알려주지 않으므로
-  // (공개 기업 전체를 세야 하는 값이라 서버에서 뺐다) 히어로가 이미 받아 둔 총수로 판단한다.
-  const canBrowseMore = stats === null || stats.companyCount > latest.length;
+  const cards = filtered ? companies : latest;
+  const cardsLoading = filtered ? loading && !loadingMore : showcase === null;
 
   return (
     <>
@@ -368,26 +359,16 @@ export default function HomePage() {
                 기본 상태에는 총 개수를 붙이지 않는다. 여기 실린 건 "가장 최근 N개"라 전체 수를
                 나란히 두면 N개만 받아 놓고 전체 수를 세어 보인 것처럼 읽힌다.
               */}
-              {usesListApi && pageInfo ? (
+              {filtered && pageInfo ? (
                 <>
                   총 <b className="text-brand-700">{pageInfo.totalElement.toLocaleString()}</b>개
                 </>
-              ) : usesListApi ? (
+              ) : filtered ? (
                 " "
               ) : (
                 "가장 최근에 등록된 기업"
               )}
             </span>
-            {/* 전체 브라우즈로 넘어가면 돌아올 길이 없어진다 — 검색과 달리 지울 조건이 없어서다. */}
-            {request.browseAll && !filtered && (
-              <button
-                type="button"
-                className="text-brand-700 text-[13px] underline underline-offset-2"
-                onClick={resetToLatest}
-              >
-                최근 등록만 보기
-              </button>
-            )}
           </div>
 
           {/* 분류 칩과 업종 필터는 같은 줄에 둔다 — 둘 다 아래 격자만 갈아 끼우는 같은 손잡이다. */}
@@ -448,7 +429,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {usesListApi && error ? (
+          {filtered && error ? (
             <ErrorState
               message={error}
               onRetry={() => setRequest((prev) => ({ ...prev, page: prev.page }))}
@@ -470,23 +451,19 @@ export default function HomePage() {
           )}
 
           {/*
-            기본 상태의 버튼은 "더 담기"가 아니라 **모드 전환**이다. 최근 등록 격자는 자리 수가 고정된
-            레일이라 이어 붙일 다음 페이지가 없고, 전체를 훑는 건 정렬 규칙이 다른 목록 API 의 몫이다.
-            (목록 화면 라우트가 생기면 이 버튼은 그리로 보내는 링크가 된다.)
+            기본 상태의 버튼은 "더 담기"가 아니라 **다른 화면으로 보내는 링크**다. 최근 등록 격자는
+            자리 수가 고정된 레일이라 이어 붙일 다음 페이지가 없고, 전체를 훑는 건 정렬 규칙이
+            다른(유료 상위) 목록 API 의 몫이라 `/companies` 가 맡는다.
           */}
-          {!usesListApi && canBrowseMore && !cardsLoading && cards.length > 0 && (
+          {!filtered && !cardsLoading && cards.length > 0 && (
             <div className="mt-1.5 flex justify-center">
-              <button
-                type="button"
-                className="btn btn-secondary min-w-[200px]"
-                onClick={() => setRequest((prev) => ({ ...prev, page: 1, browseAll: true }))}
-              >
+              <Link href="/companies" className="btn btn-secondary min-w-[200px]">
                 전체 기업 보기
-              </button>
+              </Link>
             </div>
           )}
 
-          {usesListApi && hasMore && !error && (
+          {filtered && hasMore && !error && (
             <div className="mt-1.5 flex justify-center">
               <button
                 type="button"

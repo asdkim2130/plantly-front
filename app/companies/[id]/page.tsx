@@ -95,7 +95,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
     return (
       <div className="px-4 py-16 text-center sm:px-[30px]">
         <p className="text-sm text-muted">{error}</p>
-        <Link href="/" className="btn btn-secondary mt-4">
+        <Link href="/companies" className="btn btn-secondary mt-4">
           기업 찾기로 돌아가기
         </Link>
       </div>
@@ -189,17 +189,23 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
 
         {/* 현재 위치 표시라 한 줄을 넘기지 않는다 — 긴 회사명은 여기서 자른다(제목에 온전히 있다). */}
         <nav className="relative flex items-center gap-1.5 px-4 pt-4 text-xs text-white/50 sm:px-[30px]">
-          <Link href="/" className="shrink-0 text-white/60 no-underline hover:text-white">
+          <Link href="/companies" className="shrink-0 text-white/60 no-underline hover:text-white">
             기업 찾기
           </Link>
           {/*
             가장 상위 분류 하나. 대분류가 연결돼 있으리라는 보장이 없어(C01 은 소분류만 달려 있다)
-            depth 가 가장 작은 것을 고른다. 목록 화면이 아직 없어 링크가 아니라 글자로 둔다.
+            depth 가 가장 작은 것을 고른다. 목록 화면이 생겨서 그 분류로 좁힌 결과로 이어진다 —
+            패싯이 후손 서브트리까지 잡으므로 어느 depth 를 넘겨도 이 회사가 결과에 남는다.
           */}
           {topCategory && (
             <>
               <span className="shrink-0 text-white/30">/</span>
-              <span className="shrink-0">{topCategory.categoryName}</span>
+              <Link
+                href={`/companies?categoryIds=${topCategory.id}`}
+                className="shrink-0 text-white/60 no-underline hover:text-white"
+              >
+                {topCategory.categoryName}
+              </Link>
             </>
           )}
           <span className="shrink-0 text-white/30">/</span>
