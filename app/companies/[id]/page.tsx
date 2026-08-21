@@ -141,7 +141,8 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
   if (hasCapability) tabs.push({ id: "capability", label: "제공 분야" });
   if (hasProject) tabs.push({ id: "project", label: "프로젝트" });
   if (hasGallery) tabs.push({ id: "gallery", label: "상세 이미지" });
-  if (contact) tabs.push({ id: "contact", label: "연락처" });
+  // 연락처는 탭에 넣지 않는다 — 사이드바가 sticky 라 늘 화면에 떠 있어서 이동할 곳이 아니고,
+  // 탭 대상으로 두면 "지금 보고 있는 섹션" 판정이 어디서나 그쪽으로 붙는다(DetailTabs 주석 참고).
 
   /*
    * 원본 디자인의 "문의하기"는 플랜틀리가 중개하는 문의(영업일 1일 내 회신)인데 그런 API 가 없다.
@@ -559,11 +560,7 @@ export default function CompanyDetailPage({ params }: PageProps<"/companies/[id]
           </div>
 
           {contact && (
-            <div
-              id="contact"
-              className="blueprint flex flex-col gap-3 bg-white p-5"
-              style={{ scrollMarginTop: TAB_BAR_HEIGHT }}
-            >
+            <div className="blueprint flex flex-col gap-3 bg-white p-5">
               <div className="flex items-baseline justify-between">
                 <h2 className="text-[18px]">대표 연락처</h2>
                 <span className="kick">Contact</span>
