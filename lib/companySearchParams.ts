@@ -46,6 +46,23 @@ export const ADVANCED_FIELD_LABEL: Record<AdvancedField, string> = {
   material: "취급 소재",
 };
 
+/**
+ * 고급검색 칸의 자리표시자. 라벨만으로는 "무엇을 적는 칸인지"는 알아도 **어떤 모양으로** 적는지는
+ * 모른다 — 기업명 칸에 전체 상호를 다 적어야 하는지, 주소 칸에 시·군까지만 써도 되는지 같은 것들이다.
+ * 전부 부분일치라 짧게 넣어도 걸린다는 걸 예시로 보인다.
+ */
+export const ADVANCED_FIELD_PLACEHOLDER: Record<AdvancedField, string> = {
+  companyName: "예) 대한정밀",
+  introTitle: "예) 비전 검사",
+  content: "본문에 담긴 표현",
+  ceoName: "예) 홍길동",
+  address: "예) 경기 화성시",
+  detailAddress: "동 · 호 · 단지명",
+  reference: "세 항목을 한 번에 훑습니다",
+  equipment: "예) CNC",
+  material: "예) 알루미늄",
+};
+
 /** 패싯(ID 로 거르는 조건). 차원 안에서는 OR 이고 차원끼리는 AND 다. */
 export const FACET_KEYS = ["categoryIds", "industryIds", "certificationIds"] as const;
 

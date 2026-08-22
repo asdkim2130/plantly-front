@@ -1,12 +1,21 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import CompanyCard from "@/components/CompanyCard";
 import CompanyFacets from "@/components/CompanyFacets";
 import CompanySearchForm, { type SearchText } from "@/components/CompanySearchForm";
 import Pagination from "@/components/Pagination";
 import { CompanyPlaceholder } from "@/components/Placeholders";
+import {
+  CloseIcon,
+  FactoryIcon,
+  InfoIcon,
+  SearchEmptyIcon,
+  SortIcon,
+  WarningIcon,
+} from "@/components/icons";
 import { ApiError } from "@/lib/api";
 import {
   ADVANCED_FIELDS,
@@ -36,9 +45,13 @@ const PAGE_SIZE = 24;
 
 /** 선택지(마스터 데이터). 세 개를 함께 받아 한 덩이로 들고 있는다 — 패싯 칸이 한꺼번에 차야 해서다. */
 type Options = {
+  /** 어느 시도의 결과인지. 지금 시도 번호와 다르면 아직 안 온 것이다(아래 Listing 의 key 와 같은 수법). */
+  retry: number;
   categories: CategoryPublicResponse[];
   industries: IndustryPublicResponse[];
   certifications: CertificationPublicResponse[];
+  /** 못 받았는지. 결과는 정상이고 사이드바만 이유를 보여 준다. */
+  failed: boolean;
 };
 
 /** 끝난 목록 요청 1건. key 가 지금 주소와 다르면 아직 결과가 안 온 것이다. */
@@ -49,11 +62,18 @@ type Listing = {
   error: string;
 };
 
-/** 조건 칩 하나. 지우면 그 조건만 빠진 주소로 이동한다. */
-type Chip = { id: string; label: string; onRemove: () => void };
+/** 조건 칩 하나. 키(무슨 축인지)와 값을 나눠 들고 있다 — 남색 띠에서 굵기를 달리 그린다. */
+type Chip = { id: string; key: string; value: string; onRemove: () => void };
+
+/** 좋아요·즐겨찾기 실패 안내. 로그인만 하면 되는 실패면 안내 옆에 로그인 버튼이 붙는다. */
+type Notice = { message: string; needsLogin: boolean };
 
 /**
  * 공개 기업 목록/검색 — `GET /api/v1/companies`.
+ *
+ * 디자인 정본은 Claude Design 의 **"플랜틀리 공개 검색 목록 페이지"**.
+ * 화면은 위에서부터 네 층이다 — 머리띠(제목 + 검색) · 남색 조건 띠 · 안내 · 본문 2단.
+ * 앞의 세 층을 판 좌우 끝까지 붙이는 건 "무엇을 찾는 중인가"와 "무엇이 나왔나"를 가르기 위해서다.
  *
  * **조건의 정본은 주소다**(`lib/companySearchParams.ts`). 검색어·패싯·페이지를 state 로 들지 않고
  * URL 에서 읽어 그리므로 새로고침·뒤로가기·링크 공유가 그대로 동작한다. 메인 화면과 갈리는
@@ -72,31 +92,51 @@ export default function CompanyList() {
 
   // 주소 문자열을 기준으로 다시 만든다 — 훅이 돌려주는 객체의 동일성에 기대지 않기 위해서다.
   const queryString = searchParams.toString();
-  const state = useMemo(
-    () => parseCompanySearch(new URLSearchParams(queryString)),
-    [queryString],
-  );
+  const state = useMemo(() => parseCompanySearch(new URLSearchParams(queryString)), [queryString]);
 
   /** 좋아요·즐겨찾기 실패(주로 비로그인). 목록은 그대로 두고 한 줄로 알린다. */
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   // ── 선택지(분류·업종·인증) ──────────────────────────────────────────────
   const [options, setOptions] = useState<Options | null>(null);
+  /** 선택지 "다시 시도"용. 같은 값을 두 번 넣어도 effect 가 다시 돌게 숫자를 올린다. */
+  const [optionsRetry, setOptionsRetry] = useState(0);
+
+  /** 지금 시도의 결과가 아직 안 왔는지. "다시 시도"를 누른 직후도 여기 포함된다. */
+  const optionsLoading = options?.retry !== optionsRetry;
 
   useEffect(() => {
     const controller = new AbortController();
+    const retry = optionsRetry;
+
     Promise.all([
       getCategories(controller.signal),
       getIndustries(controller.signal),
       getCertifications(controller.signal),
     ])
       .then(([categories, industries, certifications]) =>
-        setOptions({ categories, industries, certifications }),
+        setOptions({
+          retry,
+          categories,
+          industries,
+          certifications,
+          failed: false,
+        }),
       )
       // 선택지를 못 받아도 결과 목록은 볼 수 있어야 한다. 빈 값으로 확정해 자리표시자를 걷는다.
-      .catch(() => setOptions({ categories: [], industries: [], certifications: [] }));
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setOptions({
+          retry,
+          categories: [],
+          industries: [],
+          certifications: [],
+          failed: true,
+        });
+      });
+
     return () => controller.abort();
-  }, []);
+  }, [optionsRetry]);
 
   // ── 목록 ────────────────────────────────────────────────────────────────
   const key = toQueryString(state);
@@ -114,7 +154,12 @@ export default function CompanyList() {
 
     searchCompanies(toSearchQuery(state, PAGE_SIZE), controller.signal)
       .then((result) =>
-        setListing({ key, companies: result.content, pageInfo: result.pageInfo, error: "" }),
+        setListing({
+          key,
+          companies: result.content,
+          pageInfo: result.pageInfo,
+          error: "",
+        }),
       )
       .catch((e: unknown) => {
         // 조건이 바뀌어 취소된 요청은 실패가 아니다(개발 모드의 이중 실행 포함).
@@ -126,7 +171,7 @@ export default function CompanyList() {
           error:
             e instanceof ApiError
               ? e.message
-              : "기업 목록을 불러오지 못했습니다. 백엔드가 켜져 있는지 확인하세요.",
+              : "기업 목록 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
         });
       });
 
@@ -139,13 +184,15 @@ export default function CompanyList() {
   /** 조건이 바뀌면 언제나 1페이지부터 다시 본다 — 5페이지에 있던 채로 조건만 좁히면 빈 화면이 된다. */
   const apply = (patch: Partial<CompanySearchState>) => go({ ...state, ...patch, page: 1 });
 
-  const applyText = (text: SearchText) =>
-    apply({ keyword: text.keyword, advanced: text.advanced });
+  const applyText = (text: SearchText) => apply({ keyword: text.keyword, advanced: text.advanced });
 
   const toggleFacet = (facet: FacetKey, id: number) =>
     apply({ [facet]: toggleId(state[facet], id) });
 
   const clearFacet = (facet: FacetKey) => apply({ [facet]: [] });
+
+  /** 사이드바의 "전체 지우기" — 패싯 세 축만 비운다. 검색어는 남긴다(그건 남색 띠 몫이다). */
+  const clearFacets = () => apply({ categoryIds: [], industryIds: [], certificationIds: [] });
 
   const clearAll = () =>
     go({
@@ -184,20 +231,23 @@ export default function CompanyList() {
       ? [
           {
             id: "keyword",
-            label: `검색어: ${state.keyword}`,
+            key: "검색어",
+            value: state.keyword,
             onRemove: () => apply({ keyword: "" }),
           },
         ]
       : []),
     ...ADVANCED_FIELDS.filter((field) => state.advanced[field]).map((field) => ({
       id: `adv-${field}`,
-      label: `${ADVANCED_FIELD_LABEL[field]}: ${state.advanced[field]}`,
+      key: ADVANCED_FIELD_LABEL[field],
+      value: state.advanced[field],
       onRemove: () => apply({ advanced: { ...state.advanced, [field]: "" } }),
     })),
     ...FACET_KEYS.flatMap((facet) =>
       state[facet].map((id) => ({
         id: `${facet}-${id}`,
-        label: `${FACET_LABEL[facet]}: ${facetNames[facet].get(id) ?? `#${id}`}`,
+        key: FACET_LABEL[facet],
+        value: facetNames[facet].get(id) ?? `#${id}`,
         onRemove: () => toggleFacet(facet, id),
       })),
     ),
@@ -208,32 +258,50 @@ export default function CompanyList() {
   const error = listing?.error ?? "";
 
   return (
-    <div className="flex flex-col gap-5 px-4 pt-8 pb-10 sm:px-[30px]">
-      <header className="flex flex-col gap-1">
-        <p className="kick">Company Directory</p>
-        <h1 className="text-[30px] leading-tight">기업 찾기</h1>
-        <p className="text-[13px] text-muted">
-          공개 등록된 기업을 검색어와 필터로 좁혀 봅니다. 비공개로 돌렸거나 삭제된 기업은 나오지
-          않습니다.
-        </p>
-      </header>
+    <div className="flex flex-col">
+      {/* ── 머리띠 — 제목과 검색을 한 덩이로 묶는다 ─────────────────────── */}
+      <div className="border-b border-line-soft px-4 pt-[26px] pb-[22px] sm:px-[30px]">
+        <p className="kick text-brand-700 mb-[7px]">Company Directory</p>
+        <div className="flex flex-wrap items-end gap-3.5">
+          <h1 className="text-[30px] leading-[1.1]">기업 찾기</h1>
+          <p className="mb-[3px] text-[13px] text-muted">
+            공개 등록된 기업을 검색어와 필터로 찾습니다. 비공개로 돌렸거나 삭제된 기업은 나오지
+            않습니다.
+          </p>
+        </div>
 
-      <CompanySearchForm
-        keyword={state.keyword}
-        advanced={state.advanced}
-        onSubmit={applyText}
-      />
+        <div className="mt-[18px]">
+          <CompanySearchForm
+            keyword={state.keyword}
+            advanced={state.advanced}
+            onSubmit={applyText}
+          />
+        </div>
+      </div>
 
+      {/* ── 지금 걸린 조건 ────────────────────────────────────────────────
+          남색으로 깔아 흰 지면에서 떼어 놓는다. 조건은 결과를 만든 원인이라 결과보다 먼저,
+          그리고 결과와 다른 바탕 위에 있어야 "이것 때문에 이만큼만 나왔다"가 읽힌다. */}
       {chips.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="bg-brand-900 flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 sm:px-[30px]">
+          <span className="kick text-brand-300 mr-0.5">선택 조건</span>
           {chips.map((chip) => (
-            <button key={chip.id} type="button" className="chip on" onClick={chip.onRemove}>
-              {chip.label} ×
-            </button>
+            <span key={chip.id} className="qchip">
+              <b>{chip.key}</b>
+              {chip.value}
+              <button
+                type="button"
+                className="qx"
+                aria-label={`${chip.key} 조건 지우기`}
+                onClick={chip.onRemove}
+              >
+                <CloseIcon size={10} />
+              </button>
+            </span>
           ))}
           <button
             type="button"
-            className="text-brand-700 ml-1 text-[13px] underline underline-offset-2"
+            className="btn btn-ghost ml-auto text-[13px] text-white/70 hover:text-white"
             onClick={clearAll}
           >
             조건 모두 지우기
@@ -241,14 +309,28 @@ export default function CompanyList() {
         </div>
       )}
 
+      {/* 좋아요·즐겨찾기 실패. 로그인만 하면 되는 실패면 갈 곳까지 같이 준다. */}
       {notice && (
-        <p role="status" className="bg-brand-soft text-brand-700 rounded-lg px-3 py-2 text-[13px]">
-          {notice}
+        <p
+          role="status"
+          className="border-brand-300 bg-brand-soft mx-4 mt-3 flex items-center gap-2.5 rounded-lg border px-3 py-2.5 sm:mx-[30px]"
+        >
+          <InfoIcon size={16} className="text-brand-700 shrink-0" />
+          <span className="text-brand-800 text-[13px]">{notice.message}</span>
+          {notice.needsLogin && (
+            <Link
+              href="/login?next=%2Fcompanies"
+              className="btn btn-primary ml-auto shrink-0 px-3.5 py-1.5 text-[13px]"
+            >
+              로그인
+            </Link>
+          )}
         </p>
       )}
 
-      <div className="flex flex-col gap-7 lg:flex-row lg:items-start lg:gap-8">
-        <aside className="lg:w-[240px] lg:shrink-0">
+      <div className="flex flex-col gap-7 px-4 pt-5 pb-[34px] sm:px-[30px] lg:flex-row lg:items-start lg:gap-[26px]">
+        {/* 결과를 내려 보다가도 조건을 바꿀 수 있게 따라온다. */}
+        <aside className="lg:sticky lg:top-3 lg:w-[240px] lg:flex-none">
           <CompanyFacets
             categories={options?.categories ?? []}
             industries={options?.industries ?? []}
@@ -256,26 +338,37 @@ export default function CompanyList() {
             selected={state}
             onToggle={toggleFacet}
             onClear={clearFacet}
-            loading={options === null}
+            onClearAll={clearFacets}
+            loading={optionsLoading}
+            // 다시 시도하는 동안에는 실패 안내가 아니라 자리표시자를 보여야 한다.
+            failed={!optionsLoading && (options?.failed ?? false)}
+            onRetry={() => setOptionsRetry((n) => n + 1)}
           />
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex flex-wrap items-baseline gap-2.5 border-b border-line-soft pb-3">
-            <h2 className="text-[19px]">{filtered ? "검색 결과" : "전체 기업"}</h2>
-            <span className="text-[13px] text-faint">
-              {pageInfo && !loading && (
-                <>
-                  총 <b className="text-brand-700">{pageInfo.totalElement.toLocaleString()}</b>개
-                  {pageInfo.totalPage > 1 && ` · ${pageInfo.pageNumber}/${pageInfo.totalPage} 페이지`}
-                </>
-              )}
+          <div className="flex flex-wrap items-baseline gap-2.5 border-b border-line pb-3">
+            <h2 className="text-[23px]">{filtered ? "검색 결과" : "전체 기업"}</h2>
+            <span className="text-[13px] text-muted">
+              {loading
+                ? "조건에 맞는 기업을 찾는 중"
+                : pageInfo && (
+                    <>
+                      총 <b className="text-brand-700">{pageInfo.totalElement.toLocaleString()}</b>
+                      개
+                      {pageInfo.totalPage > 1 &&
+                        ` · ${pageInfo.pageNumber} / ${pageInfo.totalPage} 페이지`}
+                    </>
+                  )}
             </span>
             {/*
               정렬은 고를 수 없다(요금제 계약이라 끄는 스위치를 두지 않는다). 대신 무슨 순서인지는
               적어 둔다 — 최신순이 아닌데 최신순처럼 읽히면 그게 더 나쁘다.
             */}
-            <span className="ml-auto text-[12px] text-faint">정렬 · 추천 노출 → 최신 등록</span>
+            <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-faint">
+              <SortIcon size={13} />
+              정렬 · 스포트라이트 → 추천 노출 → 최신 등록
+            </span>
           </div>
 
           {error ? (
@@ -290,7 +383,7 @@ export default function CompanyList() {
           ) : loading ? (
             <Grid>
               {Array.from({ length: 6 }, (_, i) => (
-                <CompanyPlaceholder key={i} />
+                <CompanyPlaceholder key={i} label="불러오는 중" />
               ))}
             </Grid>
           ) : listing && listing.companies.length === 0 ? (
@@ -300,29 +393,32 @@ export default function CompanyList() {
               띄우면 아무 관계도 없는 안내가 된다 — 총 개수가 0 인지로 가른다.
             */
             pageInfo && pageInfo.totalElement > 0 ? (
-              <EmptyState
-                title={`${pageInfo.totalPage}페이지까지만 있습니다.`}
-                hint="주소의 page 값이 결과 범위를 넘었습니다."
-                actionLabel="첫 페이지로"
-                onAction={() => go({ ...state, page: 1 })}
+              <OutOfRangeState
+                page={state.page}
+                totalPage={pageInfo.totalPage}
+                onFirst={() => go({ ...state, page: 1 })}
+                onLast={() => go({ ...state, page: pageInfo.totalPage })}
               />
             ) : filtered ? (
               <EmptyState
-                title="조건에 맞는 기업이 없습니다."
-                hint="검색어를 줄이거나 필터를 풀어 보세요. 인증은 묶음끼리 AND 라 여럿 고르면 빠르게 좁혀집니다."
-                actionLabel="조건 모두 지우기"
-                onAction={clearAll}
+                onClearAll={clearAll}
+                onClearCertifications={
+                  state.certificationIds.length > 0
+                    ? () => clearFacet("certificationIds")
+                    : undefined
+                }
               />
             ) : (
-              <EmptyState
-                title="공개된 기업이 없습니다."
-                hint="백엔드 시드를 심으면 여기에 기업이 표시됩니다."
-              />
+              <NoCompanyState />
             )
           ) : (
             <Grid>
               {listing?.companies.map((company) => (
-                <CompanyCard key={company.id} company={company} onError={setNotice} />
+                <CompanyCard
+                  key={company.id}
+                  company={company}
+                  onError={(message, needsLogin) => setNotice({ message, needsLogin })}
+                />
               ))}
             </Grid>
           )}
@@ -342,41 +438,130 @@ export default function CompanyList() {
 
 function Grid({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid items-start gap-[18px] sm:grid-cols-2 lg:grid-cols-3">{children}</div>
+    <div className="grid items-start gap-[18px] pt-0.5 sm:grid-cols-2 lg:grid-cols-3">
+      {children}
+    </div>
   );
 }
 
-function EmptyState({
-  title,
-  hint,
-  actionLabel,
-  onAction,
+/** 상태 판의 공통 껍데기. 점선은 "아직 안 채워진 자리", 실선은 "일이 벌어진 자리"다. */
+function StatePanel({
+  tone = "empty",
+  children,
 }: {
-  title: string;
-  hint: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  tone?: "empty" | "solid" | "error";
+  children: React.ReactNode;
+}) {
+  const skin = {
+    empty: "border-dashed border-ink/20",
+    solid: "border-ink/15",
+    error: "border-brand/35 bg-brand/4",
+  }[tone];
+
+  return (
+    <div
+      className={`blueprint flex flex-col items-center gap-3 px-[30px] text-center ${skin} ${
+        tone === "empty" ? "py-13" : "py-11"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * 조건에 맞는 게 없을 때.
+ *
+ * 힌트가 두 갈래인 이유는 0건이 되는 길이 둘이라서다 — 통합 검색어의 단어가 늘어난 경우(AND 라
+ * 단어마다 좁아진다)와 인증을 서로 다른 묶음에서 고른 경우(묶음끼리 AND 라 급격히 좁아진다).
+ * 인증이 실제로 걸려 있을 때만 그 버튼을 준다.
+ */
+function EmptyState({
+  onClearAll,
+  onClearCertifications,
+}: {
+  onClearAll: () => void;
+  onClearCertifications?: () => void;
 }) {
   return (
-    <div className="blueprint flex flex-col items-center gap-3 border-dashed py-16 text-center">
-      <p className="font-heading text-lg">{title}</p>
-      <p className="max-w-[420px] text-[13px] text-muted">{hint}</p>
-      {actionLabel && onAction && (
-        <button type="button" className="btn btn-secondary" onClick={onAction}>
-          {actionLabel}
+    <StatePanel>
+      <SearchEmptyIcon size={30} className="text-brand-400" />
+      <p className="font-heading text-[22px] font-semibold">조건에 맞는 기업이 없습니다</p>
+      <p className="max-w-[420px] text-[13px] leading-[1.6] text-muted">
+        통합 검색어는 띄어쓴 단어를 <b className="font-semibold text-ink">모두</b> 가진 기업만
+        찾습니다. 단어를 하나 줄이거나, 인증 필터를 서로 다른 묶음에서 고르지 않았는지 확인해
+        보세요.
+      </p>
+      <div className="mt-1 flex flex-wrap justify-center gap-2">
+        <button type="button" className="btn btn-primary" onClick={onClearAll}>
+          조건 모두 지우기
         </button>
-      )}
-    </div>
+        {onClearCertifications && (
+          <button type="button" className="btn btn-secondary" onClick={onClearCertifications}>
+            인증 필터만 풀기
+          </button>
+        )}
+      </div>
+    </StatePanel>
   );
 }
 
+/** 조건에는 맞지만 그 페이지가 없을 때. 갈 곳을 주는 게 요점이라 안내보다 버튼이 중요하다. */
+function OutOfRangeState({
+  page,
+  totalPage,
+  onFirst,
+  onLast,
+}: {
+  page: number;
+  totalPage: number;
+  onFirst: () => void;
+  onLast: () => void;
+}) {
+  return (
+    <StatePanel tone="solid">
+      <p className="kick text-brand-700">
+        Page {page} / {totalPage}
+      </p>
+      <p className="font-heading text-[22px] font-semibold">{totalPage}페이지까지만 있습니다</p>
+      <p className="max-w-[420px] text-[13px] leading-[1.6] text-muted">
+        주소에 실린 페이지 번호가 결과 범위를 벗어났습니다.
+      </p>
+      <div className="mt-1 flex flex-wrap justify-center gap-2">
+        <button type="button" className="btn btn-primary" onClick={onFirst}>
+          첫 페이지로
+        </button>
+        {totalPage > 1 && (
+          <button type="button" className="btn btn-secondary" onClick={onLast}>
+            {totalPage}페이지로
+          </button>
+        )}
+      </div>
+    </StatePanel>
+  );
+}
+
+/** 조건 없이 0건 — 데이터가 아직 없는 것이라 사용자가 할 일이 없다. 버튼을 두지 않는다. */
+function NoCompanyState() {
+  return (
+    <StatePanel>
+      <FactoryIcon size={30} className="text-ink/30" />
+      <p className="font-heading text-[22px] font-semibold">공개된 기업이 없습니다</p>
+      <p className="text-[13px] text-muted">기업이 등록되면 이 목록에 바로 나타납니다.</p>
+    </StatePanel>
+  );
+}
+
+/** 요청 자체가 실패했을 때. 제목은 우리가 정하고, 본문은 서버가 준 한국어 문장을 그대로 쓴다. */
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="blueprint flex flex-col items-center gap-3 py-16 text-center">
-      <p className="font-heading text-lg">{message}</p>
-      <button type="button" className="btn btn-primary" onClick={onRetry}>
+    <StatePanel tone="error">
+      <WarningIcon size={28} className="text-brand-700" />
+      <p className="font-heading text-[22px] font-semibold">목록을 불러오지 못했습니다</p>
+      <p className="text-brand-800 max-w-[460px] text-[13px] leading-[1.6]">{message}</p>
+      <button type="button" className="btn btn-primary mt-1" onClick={onRetry}>
         다시 시도
       </button>
-    </div>
+    </StatePanel>
   );
 }

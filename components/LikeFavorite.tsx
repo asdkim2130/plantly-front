@@ -14,8 +14,13 @@ export type LikeTarget = Pick<CompanySummary, "id" | "likedByMe" | "favoritedByM
 
 type Props = {
   company: LikeTarget;
-  /** 실패(주로 비로그인)를 화면 위쪽에 한 번만 띄우기 위해 부모로 올린다. */
-  onError: (message: string) => void;
+  /**
+   * 실패(주로 비로그인)를 화면 위쪽에 한 번만 띄우기 위해 부모로 올린다.
+   *
+   * 두 번째 인자는 "로그인만 하면 되는 실패"인지다 — 목록 화면은 이걸 보고 안내 옆에 로그인
+   * 버튼을 붙인다. 1개만 받는 핸들러(setNotice)를 그대로 넘겨도 되므로 쓰는 쪽이 늘 볼 필요는 없다.
+   */
+  onError: (message: string, needsLogin: boolean) => void;
   /** 아이콘 픽셀 크기. 버튼 크기는 className 으로 조절한다. */
   iconSize?: number;
   /** 남색 카드 위 등, .icbtn 에 덧붙일 클래스 */
@@ -79,7 +84,7 @@ function ToggleButton({
   failMessage: string;
   turnOn: () => Promise<void>;
   turnOff: () => Promise<void>;
-  onError: (message: string) => void;
+  onError: (message: string, needsLogin: boolean) => void;
   className: string;
   render: (on: boolean) => React.ReactNode;
 }) {
@@ -97,9 +102,8 @@ function ToggleButton({
       await (next ? turnOn() : turnOff());
     } catch (e) {
       setOn(!next);
-      onError(
-        e instanceof ApiError && e.isUnauthorized ? failMessage : "요청을 처리하지 못했습니다.",
-      );
+      const needsLogin = e instanceof ApiError && e.isUnauthorized;
+      onError(needsLogin ? failMessage : "요청을 처리하지 못했습니다.", needsLogin);
     } finally {
       setPending(false);
     }

@@ -24,13 +24,11 @@ export default function Pagination({ page, totalPage, onChange }: Props) {
   const pages = Array.from({ length: Math.min(WINDOW, totalPage) }, (_, i) => start + i);
 
   return (
-    <nav className="flex flex-wrap items-center justify-center gap-1.5" aria-label="페이지 이동">
-      <button
-        type="button"
-        className="btn btn-secondary"
-        disabled={page <= 1}
-        onClick={() => onChange(page - 1)}
-      >
+    <nav
+      className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5"
+      aria-label="페이지 이동"
+    >
+      <button type="button" className="pg" disabled={page <= 1} onClick={() => onChange(page - 1)}>
         이전
       </button>
 
@@ -38,7 +36,7 @@ export default function Pagination({ page, totalPage, onChange }: Props) {
         <button
           key={n}
           type="button"
-          className={`btn min-w-[38px] ${n === page ? "btn-primary" : "btn-secondary"}`}
+          className={`pg ${n === page ? "on" : ""}`}
           // 스크린리더에 "지금 이 페이지"를 알린다. 색만으로는 전달되지 않는다.
           aria-current={n === page ? "page" : undefined}
           onClick={() => onChange(n)}
@@ -49,7 +47,7 @@ export default function Pagination({ page, totalPage, onChange }: Props) {
 
       <button
         type="button"
-        className="btn btn-secondary"
+        className="pg"
         disabled={page >= totalPage}
         onClick={() => onChange(page + 1)}
       >

@@ -10,7 +10,7 @@ import type { CompanySummary } from "@/types/api";
 
 type Props = {
   company: CompanySummary;
-  onError: (message: string) => void;
+  onError: (message: string, needsLogin: boolean) => void;
 };
 
 /** "전체 기업" 격자의 카드. 사진 없이 로고 + 텍스트만 쓰는 밀도 높은 형태다. */

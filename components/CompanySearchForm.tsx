@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { SearchIcon } from "@/components/icons";
+import { FilterIcon, SearchIcon } from "@/components/icons";
 import {
   ADVANCED_FIELDS,
   ADVANCED_FIELD_LABEL,
+  ADVANCED_FIELD_PLACEHOLDER,
   EMPTY_ADVANCED,
   type AdvancedField,
 } from "@/lib/companySearchParams";
@@ -61,8 +62,12 @@ export default function CompanySearchForm({ keyword, advanced, onSubmit }: Props
         submit(draft);
       }}
     >
-      <div className="blueprint flex items-center gap-3 bg-white px-4 py-3">
-        <SearchIcon size={18} className="shrink-0 text-brand" />
+      {/*
+        테두리가 카드보다 진하다(line 이 아니라 ink/50). 이 화면에서 제일 먼저 손이 가는 칸이라
+        같은 회색 테두리 상자가 위아래로 이어지면 어디에 타이핑하는 자리인지 눈에 안 띈다.
+      */}
+      <div className="blueprint flex items-center gap-3 border-ink/50 bg-white px-3.5 py-3">
+        <SearchIcon size={19} className="shrink-0 text-brand" />
         <input
           className="srch"
           type="search"
@@ -70,24 +75,34 @@ export default function CompanySearchForm({ keyword, advanced, onSubmit }: Props
           onChange={(e) => setDraft((prev) => ({ ...prev, keyword: e.target.value }))}
           aria-label="기업 통합 검색"
           // 백엔드는 공백으로 나눈 단어를 각각 AND 로 훑는다 — 두 단어가 서로 다른 필드에 있어도 맞는다.
-          placeholder="기업명, 솔루션, 태그, 장비명 — 띄어쓴 단어를 모두 포함하는 기업만 나옵니다"
+          placeholder="띄어쓴 단어를 모두 가진 기업을 찾습니다 — 예) 몰드 금형"
         />
         <button type="submit" className="btn btn-primary px-[22px]">
           검색
         </button>
       </div>
 
-      <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-        <summary className="w-fit cursor-pointer text-[13px] text-muted">
-          고급검색{advancedCount > 0 && ` · ${advancedCount}칸 입력됨`}
+      <details
+        open={open}
+        onToggle={(e) => setOpen(e.currentTarget.open)}
+        className="rounded-[10px] border border-line bg-white"
+      >
+        {/* 기본 삼각형 마커를 지우고 필터 아이콘을 세운다(마커는 브라우저마다 모양이 다르다). */}
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3.5 py-2.5 text-[13px] text-muted [&::-webkit-details-marker]:hidden">
+          <FilterIcon size={14} className="shrink-0" />
+          고급검색
+          {advancedCount > 0 && (
+            <span className="font-heading text-brand-700 rounded border border-brand/30 px-1.5 py-px text-[11px] tracking-[0.1em]">
+              {advancedCount}칸 입력됨
+            </span>
+          )}
+          {/* 접힌 채로도 이 칸들이 무엇인지 알려 준다 — 열어 봐야 아는 서랍이 되지 않게. */}
+          <span className="ml-auto hidden text-[11px] text-faint sm:inline">
+            통합 검색어와 함께 9개 항목을 각각 검색합니다
+          </span>
         </summary>
 
-        <div className="blueprint mt-2 flex flex-col gap-3 p-4">
-          <p className="text-[12px] text-faint">
-            채운 칸은 그 항목에만 부분일치로 걸린다. 통합 검색어와 함께 쓰면 둘 다 만족하는 기업만
-            남는다.
-          </p>
-
+        <div className="flex flex-col gap-3 border-t border-line-soft px-3.5 pt-4 pb-3.5">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {ADVANCED_FIELDS.map((field) => (
               <label key={field} className="flex flex-col gap-1 text-[12px] text-muted">
@@ -95,6 +110,7 @@ export default function CompanySearchForm({ keyword, advanced, onSubmit }: Props
                 <input
                   className="field"
                   type="text"
+                  placeholder={ADVANCED_FIELD_PLACEHOLDER[field]}
                   value={draft.advanced[field]}
                   onChange={(e) =>
                     setDraft((prev) => ({
@@ -107,7 +123,7 @@ export default function CompanySearchForm({ keyword, advanced, onSubmit }: Props
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button type="submit" className="btn btn-primary">
               검색
             </button>
@@ -120,6 +136,7 @@ export default function CompanySearchForm({ keyword, advanced, onSubmit }: Props
             >
               고급검색 비우기
             </button>
+            <span className="text-[11px] text-faint">비우면 곧바로 다시 검색합니다</span>
           </div>
         </div>
       </details>
