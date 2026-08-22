@@ -618,6 +618,41 @@
     min-width: 0;
     word-break: keep-all;
   }
+
+  /*
+   * 분류 트리 줄만 "고르기"와 "펼치기"를 나눠 갖는다 — 상자(.ckbox)는 체크, 글자(.cklabel)는
+   * +/- 와 같은 펼침. 그래서 줄 전체가 체크인 .ckbody 를 쓰지 못한다.
+   */
+  .ck .ckbox {
+    display: grid;
+    place-items: center;
+    flex: none;
+    padding: 4px 0;
+    cursor: pointer;
+  }
+  .ck .cklabel {
+    flex: 1;
+    min-width: 0;
+    margin-left: 7px;
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    word-break: keep-all;
+  }
+  /* 하위가 있는 줄만 누를 수 있다(잎은 <span> 이라 이 규칙에 걸리지 않는다). */
+  .ck button.cklabel {
+    cursor: pointer;
+  }
+  .ck:hover button.cklabel {
+    color: var(--color-brand-700);
+  }
+  .ck.on .cklabel {
+    color: var(--color-brand-800);
+    font-weight: 500;
+  }
   /*
    * 펼침 표시(+ / -). 자식이 없는 노드에서도 폭을 남겨 글자 시작점을 맞춘다.
    *

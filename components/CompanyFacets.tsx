@@ -219,6 +219,21 @@ function Group({
  *
  * 깊이는 왼쪽 여백과 inset 세로선으로만 준다(테두리가 아니라 그림자라 줄 높이가 밀리지 않는다).
  */
+/**
+ * 분류 트리.
+ *
+ * 줄 하나가 두 가지 일을 나눠 갖는다 — **고르기는 체크 상자에서만, 글자는 `+`/`-` 와 같다**
+ * (누르면 하위가 펼쳐지고 다시 누르면 접힌다. 걸리지는 않는다). 평면 목록(업종·인증)의 `Check` 는
+ * 줄 전체가 체크라 여기서 쓸 수 없어 markup 을 따로 둔다.
+ *
+ * 하위가 없는 분류는 글자를 눌러도 아무 일도 하지 않는다 — 펼칠 게 없는데 여기서만 체크가 걸리면
+ * 같은 글자가 줄마다 다른 일을 하게 된다.
+ *
+ * **상위를 켜도 하위 상자는 따라 켜지지 않는다.** 결과로는 이미 따라온다(분류 패싯은 후손
+ * 서브트리까지 잡는다) — 그걸 화면에서 한 번 더 그리면 하위 id 를 주소에 싣든(결과는 그대로인 채
+ * 주소와 조건 칩만 수십 개로 불어난다) 켜진 채 잠그든 군더더기가 남는다. 상자는 각자 걸린 것만
+ * 보여 주고, "하위까지 함께 찾습니다"는 묶음 제목 아래 한 줄이 맡는다.
+ */
 function CategoryTree({
   nodes,
   selected,
@@ -237,39 +252,49 @@ function CategoryTree({
       {nodes.map((node) => {
         const hasChildren = node.children.length > 0;
         const open = opened[node.id] ?? containsSelected(node, selected);
+        const checked = selected.includes(node.id);
+        const toggleOpen = () => setOpened((prev) => ({ ...prev, [node.id]: !open }));
 
         return (
           <div key={node.id}>
-            <Check
-              label={node.categoryName}
-              checked={selected.includes(node.id)}
-              onChange={() => {
-                onToggle(node.id);
-                // 글자를 누르면 하위 분류도 함께 펼친다. 전에는 "켜진 가지는 자동으로 펼쳐진다"는
-                // 부수효과(아래 open 계산)에 기대고 있었는데, +/- 를 한 번이라도 누른 가지는
-                // opened[id] 가 못 박혀 그 뒤로는 글자를 눌러도 펼쳐지지 않았다 — 같은 트리 안에서
-                // 가지마다 동작이 갈렸다. 여기서 직접 열어 두면 어느 가지든 똑같이 움직인다.
-                if (hasChildren) setOpened((prev) => ({ ...prev, [node.id]: true }));
-              }}
-              depth={depth}
-              twist={
-                // 표시가 세모(▸/▾)가 아닌 이유는 이 크기에서 획이 뭉개져 방향은커녕 표시가 있는지도
-                // 잘 안 보여서다. +/- 는 같은 자리에서 형태가 또렷하고 "누르면 열린다"가 바로 읽힌다.
-                hasChildren ? (
-                  <button
-                    type="button"
-                    className="cv"
-                    aria-label={`${node.categoryName} 하위 분류 ${open ? "접기" : "펼치기"}`}
-                    aria-expanded={open}
-                    onClick={() => setOpened((prev) => ({ ...prev, [node.id]: !open }))}
-                  >
-                    {open ? "-" : "+"}
-                  </button>
-                ) : (
-                  <span className="cv" />
-                )
-              }
-            />
+            <div className={`ck ${checked ? "on" : ""} d${depth}`}>
+              {/*
+                펼침 표시(+ / -). 글자 버튼과 하는 일이 같아 보조기기에는 숨긴다 — 같은 줄에서
+                같은 동작을 하는 컨트롤이 둘로 읽히지 않게. 이름을 가진 쪽은 글자 버튼이다.
+                표시가 세모(▸/▾)가 아닌 이유는 이 크기에서 획이 뭉개져 방향은커녕 표시가 있는지도
+                잘 안 보여서다. +/- 는 같은 자리에서 형태가 또렷하고 "누르면 열린다"가 바로 읽힌다.
+              */}
+              {hasChildren ? (
+                <button type="button" className="cv" tabIndex={-1} aria-hidden onClick={toggleOpen}>
+                  {open ? "-" : "+"}
+                </button>
+              ) : (
+                <span className="cv" />
+              )}
+
+              <label className="ckbox">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={checked}
+                  onChange={() => onToggle(node.id)}
+                  // 상자만 감싸는 라벨이라 글자가 이름을 대신해 주지 않는다.
+                  aria-label={node.categoryName}
+                />
+                <span className="bx" aria-hidden>
+                  <CheckIcon size={9} />
+                </span>
+              </label>
+
+              {hasChildren ? (
+                <button type="button" className="cklabel" aria-expanded={open} onClick={toggleOpen}>
+                  {node.categoryName}
+                </button>
+              ) : (
+                <span className="cklabel">{node.categoryName}</span>
+              )}
+            </div>
+
             {hasChildren && open && (
               <CategoryTree
                 nodes={node.children}
@@ -293,7 +318,8 @@ function containsSelected(node: CategoryPublicResponse, selected: number[]): boo
 }
 
 /**
- * 체크 줄 하나.
+ * 평면 목록(업종·인증)의 체크 줄 하나. **줄 전체가 체크**라 글자를 눌러도 걸린다 —
+ * 펼칠 하위가 없으니 글자에 다른 뜻을 줄 데가 없다(분류 트리는 글자가 펼침이라 markup 이 다르다).
  *
  * 네이티브 체크박스는 화면에서 감추고(sr-only) 14px 상자를 직접 그린다 — 브라우저마다 크기와
  * 세로 정렬이 달라 13px 글자 옆에서 줄이 흔들린다. 입력 자체는 살아 있어 키보드·스크린리더·
@@ -303,19 +329,13 @@ function Check({
   label,
   checked,
   onChange,
-  depth,
-  twist,
 }: {
   label: string;
   checked: boolean;
   onChange: () => void;
-  /** 분류 트리에서만 준다. 업종·인증은 평면이라 없다. */
-  depth?: number;
-  twist?: React.ReactNode;
 }) {
   return (
-    <div className={`ck ${checked ? "on" : ""} ${depth ? `d${depth}` : ""}`}>
-      {twist}
+    <div className={`ck ${checked ? "on" : ""}`}>
       <label className="ckbody">
         <input type="checkbox" className="sr-only" checked={checked} onChange={onChange} />
         <span className="bx" aria-hidden>
