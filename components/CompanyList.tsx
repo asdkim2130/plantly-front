@@ -281,33 +281,44 @@ export default function CompanyList() {
 
       {/* ── 지금 걸린 조건 ────────────────────────────────────────────────
           남색으로 깔아 흰 지면에서 떼어 놓는다. 조건은 결과를 만든 원인이라 결과보다 먼저,
-          그리고 결과와 다른 바탕 위에 있어야 "이것 때문에 이만큼만 나왔다"가 읽힌다. */}
-      {chips.length > 0 && (
-        <div className="bg-brand-900 flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 sm:px-[30px]">
-          <span className="kick text-brand-300 mr-0.5">선택 조건</span>
-          {chips.map((chip) => (
-            <span key={chip.id} className="qchip">
-              <b>{chip.key}</b>
-              {chip.value}
-              <button
-                type="button"
-                className="qx"
-                aria-label={`${chip.key} 조건 지우기`}
-                onClick={chip.onRemove}
-              >
-                <CloseIcon size={10} />
-              </button>
-            </span>
-          ))}
-          <button
-            type="button"
-            className="btn btn-ghost ml-auto text-[13px] text-white/70 hover:text-white"
-            onClick={clearAll}
-          >
-            조건 모두 지우기
-          </button>
-        </div>
-      )}
+          그리고 결과와 다른 바탕 위에 있어야 "이것 때문에 이만큼만 나왔다"가 읽힌다.
+
+          조건이 하나도 없어도 띠는 남긴다 — 자리가 생겼다 사라지면 첫 조건을 걸 때 아래 지면이
+          통째로 밀리고, "지금은 아무 조건도 안 걸렸다"를 말해 줄 자리도 함께 없어진다.
+          min-h 는 칩이 들어찬 높이(30px + 상하 여백)라 조건이 붙어도 띠가 커지지 않는다. */}
+      <div className="bg-brand-900 flex min-h-[54px] flex-wrap items-center gap-2 border-b border-line px-4 py-3 sm:px-[30px]">
+        <span className="kick text-brand-300 mr-0.5">선택 조건</span>
+        {chips.length === 0 ? (
+          <span className="text-[13px] text-white/55">
+            선택된 조건이 없습니다 — 검색창 또는 왼쪽 필터를 이용하세요.
+          </span>
+        ) : (
+          <>
+            {chips.map((chip) => (
+              <span key={chip.id} className="qchip">
+                <b>{chip.key}</b>
+                {chip.value}
+                <button
+                  type="button"
+                  className="qx"
+                  aria-label={`${chip.key} 조건 지우기`}
+                  onClick={chip.onRemove}
+                >
+                  <CloseIcon size={10} />
+                </button>
+              </span>
+            ))}
+            {/* 지울 게 있을 때만 보인다. 눌러도 아무 일이 없는 버튼을 띠에 남겨 두지 않는다. */}
+            <button
+              type="button"
+              className="btn btn-ghost ml-auto text-[13px] text-white/70 hover:text-white"
+              onClick={clearAll}
+            >
+              조건 모두 지우기
+            </button>
+          </>
+        )}
+      </div>
 
       {/* 좋아요·즐겨찾기 실패. 로그인만 하면 되는 실패면 갈 곳까지 같이 준다. */}
       {notice && (
@@ -329,8 +340,10 @@ export default function CompanyList() {
       )}
 
       <div className="flex flex-col gap-7 px-4 pt-5 pb-[34px] sm:px-[30px] lg:flex-row lg:items-start lg:gap-[26px]">
-        {/* 결과를 내려 보다가도 조건을 바꿀 수 있게 따라온다. */}
-        <aside className="lg:sticky lg:top-3 lg:w-[240px] lg:flex-none">
+        {/* 따라오게(sticky) 두지 않는다 — 세 축을 다 펼치면 사이드바가 960px 남짓이라 뷰포트보다
+            길고, 그러면 위에 고정된 채 아래쪽 인증 묶음이 화면에 영영 안 들어온다. 페이지와 함께
+            내려가면 조건을 바꾸러 위로 올라와야 하지만, 손이 닿지 않는 것보다는 낫다. */}
+        <aside className="lg:w-[240px] lg:flex-none">
           <CompanyFacets
             categories={options?.categories ?? []}
             industries={options?.industries ?? []}

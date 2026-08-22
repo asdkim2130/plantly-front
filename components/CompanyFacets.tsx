@@ -130,7 +130,9 @@ export default function CompanyFacets({
             onClear={() => onClear("certificationIds")}
             loading={loading}
           >
-            <div className="max-h-[340px] overflow-y-auto pr-1">
+            {/* 높이를 막지 않는다 — 묶음 상자와 사이의 AND 가 잘리면 "묶음끼리 AND" 라는
+                이 축의 규칙이 화면에서 사라진다. 길어지면 페이지째로 내려 본다. */}
+            <div>
               {certificationGroups.map((group, i) => (
                 <div key={group.type}>
                   {/* 상자와 상자 사이에만 놓는다 — 첫 상자 위의 AND 는 무엇과의 AND 인지 가리키는 데가 없다. */}
