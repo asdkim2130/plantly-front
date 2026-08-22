@@ -63,8 +63,10 @@ export default function CompanyFacets({
 
   return (
     <div>
-      <div className="mb-3.5 flex items-baseline gap-2 border-b border-line pb-2.5">
-        <span className="kick">필터</span>
+      {/* 결과 머리(`검색 결과` h2 23px · pb-3)와 글자 크기·아래 여백을 맞춘다 — 두 단의 구분선이
+          같은 높이에서 만나야 사이드바와 결과가 한 줄에서 시작하는 것처럼 읽힌다. */}
+      <div className="mb-3.5 flex items-baseline gap-2 border-b border-line pb-3">
+        <h2 className="text-[23px]">필터</h2>
         <span className="text-[11px] text-faint">분류 · 업종 · 인증</span>
         {total > 0 && (
           <button
@@ -241,7 +243,14 @@ function CategoryTree({
             <Check
               label={node.categoryName}
               checked={selected.includes(node.id)}
-              onChange={() => onToggle(node.id)}
+              onChange={() => {
+                onToggle(node.id);
+                // 글자를 누르면 하위 분류도 함께 펼친다. 전에는 "켜진 가지는 자동으로 펼쳐진다"는
+                // 부수효과(아래 open 계산)에 기대고 있었는데, +/- 를 한 번이라도 누른 가지는
+                // opened[id] 가 못 박혀 그 뒤로는 글자를 눌러도 펼쳐지지 않았다 — 같은 트리 안에서
+                // 가지마다 동작이 갈렸다. 여기서 직접 열어 두면 어느 가지든 똑같이 움직인다.
+                if (hasChildren) setOpened((prev) => ({ ...prev, [node.id]: true }));
+              }}
               depth={depth}
               twist={
                 // 표시가 세모(▸/▾)가 아닌 이유는 이 크기에서 획이 뭉개져 방향은커녕 표시가 있는지도
