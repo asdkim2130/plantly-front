@@ -357,7 +357,7 @@ export default function CompanyList() {
         {/* 따라오게(sticky) 두지 않는다 — 세 축을 다 펼치면 사이드바가 960px 남짓이라 뷰포트보다
             길고, 그러면 위에 고정된 채 아래쪽 인증 묶음이 화면에 영영 안 들어온다. 페이지와 함께
             내려가면 조건을 바꾸러 위로 올라와야 하지만, 손이 닿지 않는 것보다는 낫다. */}
-        <aside className="lg:w-[240px] lg:flex-none">
+        <aside className="lg:w-[200px] lg:flex-none">
           <CompanyFacets
             categories={options?.categories ?? []}
             industries={options?.industries ?? []}

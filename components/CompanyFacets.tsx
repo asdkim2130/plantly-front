@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon } from "@/components/icons";
+import { CheckIcon, InfoIcon } from "@/components/icons";
 import { CERTIFICATION_TYPE_LABEL, CERTIFICATION_TYPE_ORDER } from "@/lib/labels";
 import type { FacetKey } from "@/lib/companySearchParams";
 import type {
@@ -64,10 +64,11 @@ export default function CompanyFacets({
   return (
     <div>
       {/* 결과 머리(`검색 결과` h2 23px · pb-3)와 글자 크기·아래 여백을 맞춘다 — 두 단의 구분선이
-          같은 높이에서 만나야 사이드바와 결과가 한 줄에서 시작하는 것처럼 읽힌다. */}
+          같은 높이에서 만나야 사이드바와 결과가 한 줄에서 시작하는 것처럼 읽힌다.
+          부제("분류 · 업종 · 인증")는 뺐다 — 폭을 200px 로 줄이면서 이 줄이 제일 먼저 넘쳤고,
+          바로 아래에 세 묶음의 제목이 그대로 있어 한 번 더 적을 이유가 없다. */}
       <div className="mb-3.5 flex items-baseline gap-2 border-b border-line pb-3">
         <h2 className="text-[23px]">필터</h2>
-        <span className="text-[11px] text-faint">분류 · 업종 · 인증</span>
         {total > 0 && (
           <button
             type="button"
@@ -334,6 +335,8 @@ function Check({
   checked: boolean;
   onChange: () => void;
 }) {
+  const [name, note] = splitNote(label);
+
   return (
     <div className={`ck ${checked ? "on" : ""}`}>
       <label className="ckbody">
@@ -341,8 +344,28 @@ function Check({
         <span className="bx" aria-hidden>
           <CheckIcon size={9} />
         </span>
-        <span className="cktext">{label}</span>
+        <span className="cktext">{name}</span>
+        {note && (
+          // 화면에서는 풍선으로 접어 두고 이름은 온전히 남긴다 — 라벨 안에 있으니 체크박스의
+          // 이름은 여전히 "ISO 9001 (품질경영)" 전체다.
+          <span className="hint" data-note={note}>
+            <InfoIcon size={12} />
+            <span className="sr-only">({note})</span>
+          </span>
+        )}
       </label>
     </div>
   );
+}
+
+/**
+ * `"ISO 9001 (품질경영)"` → `["ISO 9001", "품질경영"]`.
+ *
+ * 인증 이름은 뒤에 붙은 괄호가 이름 자체보다 길어(`SQ 인증 (자동차 OEM 협력사 품질)`) 사이드바
+ * 가로폭을 그 설명이 정하고 있었다. 이름만 줄에 남기고 설명은 풍선으로 접는다.
+ * 괄호가 없으면 그대로 돌려준다 — 업종·분류처럼 설명이 없는 이름도 같은 함수를 지난다.
+ */
+function splitNote(label: string): [string, string] {
+  const matched = /^(.+?)\s*\((.+)\)$/.exec(label.trim());
+  return matched ? [matched[1], matched[2]] : [label, ""];
 }
