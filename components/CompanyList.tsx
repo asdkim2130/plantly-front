@@ -7,6 +7,7 @@ import CompanyCard from "@/components/CompanyCard";
 import CompanyFacets from "@/components/CompanyFacets";
 import CompanySearchForm, { type SearchText } from "@/components/CompanySearchForm";
 import Pagination from "@/components/Pagination";
+import ScrollTop from "@/components/ScrollTop";
 import { CompanyPlaceholder } from "@/components/Placeholders";
 import {
   CloseIcon,
@@ -179,30 +180,43 @@ export default function CompanyList() {
   }, [key, state, retry]);
 
   // ── 조건 바꾸기 = 주소 바꾸기 ───────────────────────────────────────────
-  const go = (next: CompanySearchState) => router.push(`/companies${toQueryString(next)}`);
+  /**
+   * `stay` 는 "스크롤을 건드리지 말라"는 뜻이다. App Router 는 이동할 때마다 화면을 맨 위로
+   * 올리는데, 사이드바에서 체크를 하나 켤 때마다 그러면 조건을 두세 개 걸기가 어렵다 —
+   * 방금 누른 줄이 화면 밖으로 사라진다. 조건을 만지는 동안에는 제자리에 둔다.
+   *
+   * 반대로 페이지를 넘길 때는 맨 위로 올리는 게 맞다(새 페이지를 중간부터 읽을 이유가 없다).
+   * 그래서 기본값은 그대로 두고 조건 조작에서만 켠다.
+   */
+  const go = (next: CompanySearchState, stay = false) =>
+    router.push(`/companies${toQueryString(next)}`, { scroll: !stay });
 
   /** 조건이 바뀌면 언제나 1페이지부터 다시 본다 — 5페이지에 있던 채로 조건만 좁히면 빈 화면이 된다. */
-  const apply = (patch: Partial<CompanySearchState>) => go({ ...state, ...patch, page: 1 });
+  const apply = (patch: Partial<CompanySearchState>, stay = false) =>
+    go({ ...state, ...patch, page: 1 }, stay);
 
   const applyText = (text: SearchText) => apply({ keyword: text.keyword, advanced: text.advanced });
 
   const toggleFacet = (facet: FacetKey, id: number) =>
-    apply({ [facet]: toggleId(state[facet], id) });
+    apply({ [facet]: toggleId(state[facet], id) }, true);
 
-  const clearFacet = (facet: FacetKey) => apply({ [facet]: [] });
+  const clearFacet = (facet: FacetKey) => apply({ [facet]: [] }, true);
 
   /** 사이드바의 "전체 지우기" — 패싯 세 축만 비운다. 검색어는 남긴다(그건 남색 띠 몫이다). */
-  const clearFacets = () => apply({ categoryIds: [], industryIds: [], certificationIds: [] });
+  const clearFacets = () => apply({ categoryIds: [], industryIds: [], certificationIds: [] }, true);
 
   const clearAll = () =>
-    go({
-      keyword: "",
-      advanced: EMPTY_ADVANCED,
-      categoryIds: [],
-      industryIds: [],
-      certificationIds: [],
-      page: 1,
-    });
+    go(
+      {
+        keyword: "",
+        advanced: EMPTY_ADVANCED,
+        categoryIds: [],
+        industryIds: [],
+        certificationIds: [],
+        page: 1,
+      },
+      true,
+    );
 
   // ── 지금 걸린 조건을 칩으로 ─────────────────────────────────────────────
   // 패싯은 주소에 id 만 실려 있어 이름을 선택지에서 되찾는다. 아직 못 받았으면 id 를 그대로 보여준다 —
@@ -233,7 +247,7 @@ export default function CompanyList() {
             id: "keyword",
             key: "검색어",
             value: state.keyword,
-            onRemove: () => apply({ keyword: "" }),
+            onRemove: () => apply({ keyword: "" }, true),
           },
         ]
       : []),
@@ -241,7 +255,7 @@ export default function CompanyList() {
       id: `adv-${field}`,
       key: ADVANCED_FIELD_LABEL[field],
       value: state.advanced[field],
-      onRemove: () => apply({ advanced: { ...state.advanced, [field]: "" } }),
+      onRemove: () => apply({ advanced: { ...state.advanced, [field]: "" } }, true),
     })),
     ...FACET_KEYS.flatMap((facet) =>
       state[facet].map((id) => ({
@@ -445,6 +459,8 @@ export default function CompanyList() {
           )}
         </section>
       </div>
+
+      <ScrollTop />
     </div>
   );
 }
