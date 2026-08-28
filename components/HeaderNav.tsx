@@ -39,7 +39,11 @@ export default function HeaderNav() {
   return (
     <>
       {/* 좁은 화면에서는 메뉴를 접는다 — 모바일 내비게이션은 화면이 더 생기면 만든다. */}
-      <Link href="/" className="hidden text-sm whitespace-nowrap text-ink no-underline md:inline">
+      {/* 홈(큐레이션)은 왼쪽 로고가 맡는다. 이 자리는 검색·필터가 있는 목록 화면으로 보낸다. */}
+      <Link
+        href="/companies"
+        className="hidden text-sm whitespace-nowrap text-ink no-underline md:inline"
+      >
         기업 찾기
       </Link>
       {/* 아직 없는 화면들. 라우트가 생기면 Link 로 바꾼다. */}

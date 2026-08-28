@@ -6,9 +6,15 @@
  * 패키지를 하나 더 얹는 것보다 여기 모아두는 편이 추적이 쉽다.
  */
 
-type IconProps = { size?: number; className?: string };
+/** 굵기는 1.5 가 기본이다. 아주 작게 그리는 글리프(체크·×)만 굵혀 쓴다. */
+type IconProps = { size?: number; className?: string; strokeWidth?: number };
 
-function Svg({ size = 16, className, children }: IconProps & { children: React.ReactNode }) {
+function Svg({
+  size = 16,
+  className,
+  strokeWidth = 1.5,
+  children,
+}: IconProps & { children: React.ReactNode }) {
   return (
     <svg
       width={size}
@@ -16,7 +22,7 @@ function Svg({ size = 16, className, children }: IconProps & { children: React.R
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.5}
+      strokeWidth={strokeWidth}
       aria-hidden
       className={className}
     >
@@ -126,10 +132,75 @@ export function ChevronRightIcon(props: IconProps) {
   );
 }
 
+export function ChevronUpIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 15l7-7 7 7" />
+    </Svg>
+  );
+}
+
 export function FilterIcon(props: IconProps) {
   return (
     <Svg {...props}>
       <path d="M4 6h16M7 12h10M10 18h4" />
+    </Svg>
+  );
+}
+
+/** 목록 위의 정렬 표기 앞 — 줄 세 개 + 내림 화살표. 누를 수 있는 버튼이 아니라 표시다. */
+export function SortIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 7h11M4 12h7M4 17h4M17 6v12l3-3" />
+    </Svg>
+  );
+}
+
+/** 결과가 0건일 때. 돋보기 안이 빼기라 "찾았는데 없다"로 읽힌다(검색 아이콘과 구분된다). */
+export function SearchEmptyIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-4.3-4.3M9 11h4" />
+    </Svg>
+  );
+}
+
+/** 안내 한 줄 앞 */
+export function InfoIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v.01M12 11v5" />
+    </Svg>
+  );
+}
+
+/** 요청이 실패했을 때 */
+export function WarningIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4l9 16H3z" />
+      <path d="M12 10v4M12 17v.01" />
+    </Svg>
+  );
+}
+
+/** 체크박스(.bx) 안에 들어가는 글리프. 9px 로 그려서 기본 굵기로는 보이지 않는다. */
+export function CheckIcon({ strokeWidth = 3.5, ...props }: IconProps) {
+  return (
+    <Svg {...props} strokeWidth={strokeWidth}>
+      <path d="M5 12.5l4.5 4.5L19 7" />
+    </Svg>
+  );
+}
+
+/** 조건 칩의 해제 버튼(.qx) 안. 체크와 같은 이유로 굵다. */
+export function CloseIcon({ strokeWidth = 2.5, ...props }: IconProps) {
+  return (
+    <Svg {...props} strokeWidth={strokeWidth}>
+      <path d="M6 6l12 12M18 6L6 18" />
     </Svg>
   );
 }

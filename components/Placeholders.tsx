@@ -46,8 +46,13 @@ export function FeaturedPlaceholder() {
   );
 }
 
-/** 전체 기업 격자의 카드 자리. 로딩 중 스켈레톤으로도 쓴다. */
-export function CompanyPlaceholder() {
+/**
+ * 전체 기업 격자의 카드 자리. 로딩 중 스켈레톤으로도 쓴다.
+ *
+ * 아래 글귀가 자리마다 다르다 — 메인은 칸을 메우는 자리라 "데이터 준비 중"이지만, 목록 화면에서는
+ * 곧 결과가 들어올 자리라 "불러오는 중"이다. 둘을 한 문구로 합치면 한쪽이 거짓말이 된다.
+ */
+export function CompanyPlaceholder({ label = "데이터 준비 중" }: { label?: string }) {
   return (
     <div className="blueprint flex min-h-[172px] flex-col gap-3 border-dashed p-[18px]">
       <div className="flex gap-[13px]">
@@ -63,7 +68,7 @@ export function CompanyPlaceholder() {
         <span className="skel h-[19px] w-[60px]" />
       </div>
       <p className="font-heading mt-auto border-t border-dashed border-line-soft pt-[11px] text-[11px] tracking-[0.08em] text-faint">
-        데이터 준비 중
+        {label}
       </p>
     </div>
   );
