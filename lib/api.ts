@@ -9,7 +9,7 @@
  *  3. 봉투 벗기기 — {success, message, data, error} 에서 data 만 돌려주고, 실패는 ApiError 로 던진다.
  */
 
-import type { ApiResponse } from "@/types/api";
+import type { ApiResponse, ValidationError } from "@/types/api";
 
 const BASE = "/api/v1";
 
@@ -17,6 +17,13 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /**
+     * 백엔드 `ErrorCode` 상수 이름(`VERIFICATION_EXPIRED` …). 분기는 문구가 아니라 이 값으로 한다.
+     * 봉투가 없는 실패(프록시 오류·네트워크)에서는 비어 있다.
+     */
+    readonly code: string | null = null,
+    /** 검증 실패(INVALID_INPUT)일 때만 차 있다. 폼 순서로 정렬돼 온다 */
+    readonly errors: ValidationError[] = [],
   ) {
     super(message);
     this.name = "ApiError";
@@ -126,7 +133,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   if (!res.ok) {
-    throw new ApiError(res.status, await readErrorMessage(res));
+    throw await readError(res);
   }
 
   // 204(좋아요·즐겨찾기)와 본문 없는 성공 응답.
@@ -139,15 +146,80 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return envelope.data as T;
 }
 
-async function readErrorMessage(res: Response): Promise<string> {
+async function readError(res: Response): Promise<ApiError> {
+  return parseError(res.status, await res.text().catch(() => ""));
+}
+
+/** 실패 본문(문자열)을 ApiError 로. fetch 경로와 업로드(XHR) 경로가 같이 쓴다. */
+function parseError(status: number, text: string): ApiError {
   try {
-    const body = (await res.json()) as ApiResponse<never>;
-    // 백엔드는 실패를 {success:false, error:"..."} 로 통일해 내려준다.
-    if (body.error) return body.error;
+    const body = JSON.parse(text) as ApiResponse<never>;
+    // 백엔드는 실패를 {success:false, code, error:"...", errors?} 로 통일해 내려준다.
+    if (body.error) return new ApiError(status, body.error, body.code ?? null, body.errors ?? []);
   } catch {
     // 본문이 비었거나 JSON 이 아닌 경우(프록시 오류 등)는 아래 기본 문구로 떨어진다.
   }
-  return res.status === 401 ? "로그인이 필요합니다." : `요청이 실패했습니다. (HTTP ${res.status})`;
+  return new ApiError(
+    status,
+    status === 401 ? "로그인이 필요합니다." : `요청이 실패했습니다. (HTTP ${status})`,
+  );
+}
+
+/**
+ * 파일 한 장 업로드(multipart). 진행률이 필요해서 fetch 가 아니라 XMLHttpRequest 를 쓴다 —
+ * fetch 에는 **보내는 쪽** 진행률을 받을 방법이 없다(응답 스트림만 읽을 수 있다).
+ *
+ * JSON 요청과 다른 점 두 가지:
+ *  - `Content-Type` 을 직접 넣지 않는다. FormData 를 넘기면 브라우저가 경계 문자열(boundary)을 붙인
+ *    `multipart/form-data; boundary=…` 를 스스로 만든다. 손으로 넣으면 boundary 가 빠져 서버가 못 읽는다.
+ *  - 그래도 CSRF 헤더는 필요하다(POST 다). 403 재시도 규칙은 `request` 와 같다.
+ *
+ * 여러 장을 한 요청에 묶지 않는다 — 백엔드가 한 장씩만 받는다(한 장 실패로 전부 날아가지 않게, 진행률도 장당).
+ */
+export async function uploadFile(
+  path: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const reusedToken = csrfCache !== null;
+  let csrf = csrfCache ?? (await loadCsrf());
+  let result = await sendMultipart(path, file, csrf, onProgress, signal);
+  if (result.status === 403 && reusedToken) {
+    csrf = await loadCsrf();
+    result = await sendMultipart(path, file, csrf, onProgress, signal);
+  }
+  if (result.status < 200 || result.status >= 300) {
+    throw parseError(result.status, result.text);
+  }
+  return (JSON.parse(result.text) as ApiResponse<unknown>).data;
+}
+
+function sendMultipart(
+  path: string,
+  file: File,
+  csrf: Csrf,
+  onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
+): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${BASE}${path}`);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader(csrf.headerName, csrf.token);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onload = () => resolve({ status: xhr.status, text: xhr.responseText });
+    // 연결 자체가 끊긴 경우(서버 다운, 용량 초과로 서버가 연결을 닫은 경우)에는 상태 코드가 없다.
+    xhr.onerror = () => reject(new ApiError(0, "업로드 중 연결이 끊겼습니다. 잠시 후 다시 시도해 주세요."));
+    xhr.onabort = () => reject(new DOMException("업로드를 취소했습니다.", "AbortError"));
+    signal?.addEventListener("abort", () => xhr.abort());
+
+    const form = new FormData();
+    form.append("file", file);
+    xhr.send(form);
+  });
 }
 
 export const api = {

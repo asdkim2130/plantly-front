@@ -5,12 +5,17 @@
 
 import { api } from "@/lib/api";
 import type {
+  CompanyDraftResponse,
   CompanyPublicResponse,
   CompanySearchQuery,
   CompanyShowcaseResponse,
   CompanyStatsResponse,
   CompanySubscriptionResponse,
   CompanySummary,
+  CompanyVerificationRequest,
+  CompanyVerificationResponse,
+  IdResponse,
+  MyCompanyCreateRequest,
   PageResponse,
 } from "@/types/api";
 
@@ -70,3 +75,49 @@ export const like = (companyId: number) => api.put<void>(`/companies/${companyId
 export const unlike = (companyId: number) => api.delete<void>(`/companies/${companyId}/like`);
 export const favorite = (companyId: number) => api.put<void>(`/companies/${companyId}/favorite`);
 export const unfavorite = (companyId: number) => api.delete<void>(`/companies/${companyId}/favorite`);
+
+// ===== 회사 등록(자가등록) =====
+// 순서: 사업자 인증 → (초안 이어쓰기) → 작성(자동저장) → 발행. 신원 3종은 인증본에서만 온다.
+
+/**
+ * 국세청 사업자 확인. 통과하면 verificationId 와 이 회사가 받을 등급·한도가 온다.
+ *
+ * 실패는 `ApiError.code` 로 가른다 — 같은 400 이라도 사용자가 고칠 것이 다르다.
+ * `VERIFICATION_MISMATCH`(입력 불일치) · `VERIFICATION_NOT_REGISTERED` · `VERIFICATION_SUSPENDED` ·
+ * `VERIFICATION_CLOSED` · `BUSINESS_NUMBER_TAKEN`(409, 이미 등록됨) · `VERIFICATION_LIMIT_EXCEEDED`(429) ·
+ * `VERIFICATION_UNAVAILABLE`(503, 국세청 지연 — 입력 문제가 아니다) · `BUSINESS_NUMBER_INVALID_FORMAT`.
+ */
+export function verifyBusiness(request: CompanyVerificationRequest) {
+  return api.post<CompanyVerificationResponse>("/companies/verification", request);
+}
+
+/**
+ * 이 사업자번호로 작성 중인 초안. 없으면 404(`DRAFT_NOT_FOUND`) — 오류가 아니라 "새로 쓴다"는 답이다.
+ * 이 번호로 인증받은 이력이 없으면 400(`VERIFICATION_NOT_FOUND`).
+ */
+export function getDraft(businessNumber: string, signal?: AbortSignal) {
+  return api.get<CompanyDraftResponse>(`/companies/drafts/${businessNumber}`, undefined, signal);
+}
+
+/**
+ * 자동저장(upsert). 서버가 내용을 검증하지 않아 반쯤 쓴 값도 저장된다.
+ * 그래도 실패하는 두 경우는 조용히 삼키면 안 된다 — `VERIFICATION_ALREADY_USED`(이미 등록된 번호)와
+ * `VERIFICATION_NOT_FOUND`(인증 이력 없음).
+ */
+export function saveDraft(businessNumber: string, payload: MyCompanyCreateRequest) {
+  return api.put<void>(`/companies/drafts/${businessNumber}`, payload);
+}
+
+/** 초안 폐기. 없어도 성공(멱등). 발행이 성공하면 서버가 알아서 지우므로 "작성 포기"에서만 부른다. */
+export function deleteDraft(businessNumber: string) {
+  return api.delete<void>(`/companies/drafts/${businessNumber}`);
+}
+
+/**
+ * 발행. 본문은 초안 payload 와 같은 모양이고, verificationId 는 **지금 유효한 값**으로 덮어써 보낸다.
+ * 인증이 시간으로 만료됐어도 서버가 발행 직전에 국세청에 다시 물어 되살린다(사용자에게 다시 받을 값이 없다).
+ * 검증 실패는 `errors[]` 에 전부 담겨 온다(폼 순서).
+ */
+export function createCompany(payload: MyCompanyCreateRequest) {
+  return api.post<IdResponse>("/companies", payload);
+}
