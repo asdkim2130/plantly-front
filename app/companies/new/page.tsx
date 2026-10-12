@@ -7,8 +7,7 @@ import { useSession } from "@/components/SessionProvider";
 import DoneStep from "@/components/register/DoneStep";
 import RegisterForm from "@/components/register/RegisterForm";
 import VerifyStep from "@/components/register/VerifyStep";
-import { getFormConstraints, getOptions, getUploadConstraints, indexConstraints } from "@/lib/meta";
-import { getCategories, getCertifications, getCountries, getDomesticRegions, getIndustries } from "@/lib/options";
+import { loadRegisterMasters } from "@/lib/registerMasters";
 import {
   emptyForm,
   findEtcCertificationId,
@@ -47,32 +46,10 @@ export default function CompanyCreatePage() {
     if (!loading && !user) router.replace(`/login?next=${encodeURIComponent("/companies/new")}`);
   }, [loading, user, router]);
 
-  const loadMasters = useCallback(async (signal?: AbortSignal): Promise<RegisterMasters> => {
-    // 선택지 다섯은 없으면 폼을 그릴 수 없다. 메타 셋(제약·라벨·업로드)은 실패해도 폼은 열린다 —
-    // 숫자 없이 그리고, 최종 판정은 서버가 한다.
-    const [categories, industries, certifications, countries, regions] = await Promise.all([
-      getCategories(signal),
-      getIndustries(signal),
-      getCertifications(signal),
-      getCountries(signal),
-      getDomesticRegions(signal),
-    ]);
-    const [options, constraints, upload] = await Promise.allSettled([
-      getOptions(signal),
-      getFormConstraints("my-company-create", signal),
-      getUploadConstraints(signal),
-    ]);
-    return {
-      categories,
-      industries,
-      certifications,
-      countries,
-      regions,
-      options: options.status === "fulfilled" ? options.value : {},
-      constraints: constraints.status === "fulfilled" ? indexConstraints(constraints.value) : null,
-      upload: upload.status === "fulfilled" ? upload.value : null,
-    };
-  }, []);
+  const loadMasters = useCallback(
+    (signal?: AbortSignal) => loadRegisterMasters(["my-company-create"], signal),
+    [],
+  );
 
   useEffect(() => {
     if (!user) return;

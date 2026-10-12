@@ -35,6 +35,7 @@ export default function ImageList({
   upload,
   label,
   emptyHint,
+  inactive,
 }: {
   urls: string[];
   /** 최신 배열을 받아 다음 배열을 돌려주는 함수형 갱신 — 여러 장이 동시에 끝나도 서로 덮어쓰지 않는다 */
@@ -44,6 +45,8 @@ export default function ImageList({
   label: string;
   /** 한 장도 없을 때 넓은 자리에 띄울 안내 */
   emptyHint: React.ReactNode;
+  /** 저장돼 있지만 등급 한도를 넘겨 공개되지 않는 장(수정 화면). 회색 + "비공개" 표시 */
+  inactive?: Set<string>;
 }) {
   const [pending, setPending] = useState<Pending[]>([]);
   const [rejected, setRejected] = useState<Rejected[]>([]);
@@ -154,8 +157,18 @@ export default function ImageList({
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={`${label} ${index + 1}`} draggable={false} />
+              <img
+                src={url}
+                alt={`${label} ${index + 1}`}
+                draggable={false}
+                className={inactive?.has(url) ? "opacity-45 grayscale" : undefined}
+              />
               <span className="no">{index + 1}</span>
+              {inactive?.has(url) && (
+                <span className="absolute inset-x-1 bottom-1 rounded bg-ink/75 py-0.5 text-center text-[11px] text-white">
+                  비공개
+                </span>
+              )}
               <button
                 type="button"
                 className="dl"

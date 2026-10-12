@@ -3,8 +3,8 @@
 /**
  * 3단계 — 발행 완료.
  *
- * 디자인의 "회사 상세 보기 / 내 회사 관리" 중 내 회사 관리는 아직 화면이 없어 뺐다. 상세 보기는 **공개로
- * 발행했을 때만** 둔다 — 비공개 회사는 공개 상세가 404 라(소유자 전용 화면은 아직 없다) 눌러도 빈 화면이다.
+ * 디자인의 "회사 상세 보기 / 내 회사 관리" 중 내 회사 관리는 아직 화면이 없어 그 자리에 "정보 수정"
+ * (`/companies/{id}/edit`)을 둔다. 상세 보기는 **공개로 발행했을 때만** 둔다 — 비공개 회사는 공개 상세가 404 다.
  */
 
 import Link from "next/link";
@@ -44,7 +44,10 @@ export default function DoneStep({
               회사 상세 보기
             </Link>
           )}
-          <Link href="/" className={`btn ${isPublic ? "btn-secondary" : "btn-primary px-5"}`}>
+          <Link href={`/companies/${companyId}/edit`} className={`btn ${isPublic ? "btn-secondary" : "btn-primary px-5"}`}>
+            정보 수정
+          </Link>
+          <Link href="/" className="btn btn-ghost">
             메인으로
           </Link>
         </div>

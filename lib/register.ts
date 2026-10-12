@@ -58,7 +58,21 @@ export type SectionProps = {
   grade: CompanyGrade;
   /** 선택지 목록에서 사라져 발행을 막은 항목(칸 키 → id → 이름). 칩을 빨간 줄로 그린다 */
   removed: RemovedSelections;
+  /**
+   * 등록(create)인가 수정(edit)인가. 갈리는 건 둘뿐이다 —
+   * 수정은 기술 성숙도·가격 정책을 "선택 안 함"으로 되돌릴 수 없고(PATCH 가 enum 비우기를 지원하지 않는다),
+   * 공개 설정 안내 문구가 "발행하면"이 아니라 "저장하면"이다. 생략하면 create.
+   */
+  mode?: "create" | "edit";
+  /** 수정 화면에서만: 저장돼 있지만 등급 한도를 넘겨 공개되지 않는 항목(회색으로 그린다) */
+  hidden?: HiddenItems;
 };
+
+/**
+ * 등급 초과로 숨겨진(active=false) 항목. 지운 게 아니라 저장은 살아 있다 — 회색으로 구분해야
+ * 소유자가 "데이터가 날아갔다"고 오해하지 않는다. 레퍼런스 이미지는 서버가 개별 on/off 를 아직 주지 않는다.
+ */
+export type HiddenItems = { categoryIds: Set<number>; images: Set<string> };
 
 export type RemovedSelections = Partial<Record<"categoryIds" | "industryIds" | "certificationIds" | "countryIds" | "domesticRegionIds", Map<number, string>>>;
 
