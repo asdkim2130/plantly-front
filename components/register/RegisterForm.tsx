@@ -205,6 +205,16 @@ export default function RegisterForm({
     return dirty.current ? runSave() : Promise.resolve();
   }, [runSave]);
 
+  /**
+   * "임시저장" 버튼. 자동저장과 같은 호출(같은 줄에 선다)이라 둘이 겹쳐도 내용이 꼬이지 않는다.
+   * 고친 게 없어도 보낸다 — 누른 사람은 "지금 저장됐다"는 확인을 원하고, 손대지 않은 새 폼이라도
+   * 초안을 만들어 두면 나중에 같은 사업자번호로 이어 쓸 자리가 생긴다(서버 저장은 덮어쓰기라 멱등이다).
+   */
+  const saveNow = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    return runSave();
+  }, [runSave]);
+
   // 저장 안 된 변경이 있으면 창을 닫을 때 브라우저가 한 번 묻게 한다.
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
@@ -354,6 +364,9 @@ export default function RegisterForm({
     }
   }
 
+  // 이미 등록된 번호·인증 없음으로 저장이 막힌 상태 — 눌러 봐야 같은 답이라 버튼을 잠근다.
+  const saveHalted = banner?.kind === "savedup" || banner?.kind === "noauth";
+
   // ── 그리기 ──
   const states = sectionStates(form, verification.limits.videoAllowed);
   const done = requiredDone(form);
@@ -387,6 +400,7 @@ export default function RegisterForm({
           <button type="button" className="btn btn-ghost" onClick={() => setCancelOpen(true)}>
             작성 취소
           </button>
+          <SaveButton state={saveState} halted={saveHalted} uploading={uploading} onClick={saveNow} />
           <PublishButton publishing={publishing} uploading={uploading} onClick={publish} />
         </div>
         <div className="flex flex-wrap items-center gap-x-[26px] gap-y-2 bg-brand-900 px-4 py-[11px] sm:px-[30px]">
@@ -466,6 +480,10 @@ export default function RegisterForm({
               <br />그 외 정보는 발행 후에도 언제든 추가할 수 있습니다.
             </p>
           </div>
+          <div className="-mt-2 flex items-center gap-2 text-[13px] text-muted">
+            <CloudCheckIcon size={14} className="shrink-0 text-brand-700" />
+            작성 중인 내용은 자동으로 임시저장 됩니다. 같은 사업자번호로 인증하면 이어서 작성할 수 있습니다.
+          </div>
 
           {shownBanner && (
             <FormBanner
@@ -505,6 +523,7 @@ export default function RegisterForm({
             <button type="button" className="btn btn-ghost" onClick={() => setCancelOpen(true)}>
               작성 취소
             </button>
+            <SaveButton state={saveState} halted={saveHalted} uploading={uploading} onClick={saveNow} />
             <PublishButton publishing={publishing} uploading={uploading} onClick={publish} />
           </div>
         </div>
@@ -608,6 +627,31 @@ function SaveStatus({ state, savedAt, now }: { state: SaveState; savedAt: string
       <CloudCheckIcon size={14} />
       {savedAt ? `${relativeTime(savedAt, now)} 저장됨` : "입력하면 자동 저장됩니다"}
     </span>
+  );
+}
+
+function SaveButton({
+  state,
+  halted,
+  uploading,
+  onClick,
+}: {
+  state: SaveState;
+  halted: boolean;
+  uploading: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="btn btn-secondary bg-white"
+      disabled={halted || state === "saving"}
+      onClick={onClick}
+      // 올라가는 중인 사진은 아직 url 이 없어 폼에 없다 — 지금 저장하면 그 장은 빠진다.
+      title={uploading > 0 ? "올리는 중인 이미지는 업로드가 끝난 뒤 저장됩니다" : undefined}
+    >
+      임시저장
+    </button>
   );
 }
 
