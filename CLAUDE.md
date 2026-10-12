@@ -311,7 +311,8 @@ app/login/page.tsx       로그인. 성공하면 ?next= 로 돌아간다(오픈 
 app/globals.css          디자인 토큰(@theme) + 컴포넌트 클래스(@layer components)
 components/Corners.tsx   청사진 모서리 마크
 components/icons.tsx     디자인에 쓰인 SVG 8개
-components/*Card.tsx     CompanyCard(격자) / FeaturedCard(추천) / SpotlightCard(스포트라이트)
+components/*Card.tsx     CompanyCard(격자) / FeaturedCard(추천) / SpotlightCard(스포트라이트) / OwnerCompanyCard(내 기업)
+components/CoverCard.tsx  커버+로고 카드 몸통. FeaturedCard 와 OwnerCompanyCard 가 자리(slot)만 바꿔 함께 쓴다
 components/Logo.tsx      정사각 로고 배지. 없으면 이름 앞 두 글자
 components/Cover.tsx     카드 커버 사진(와이드). 없으면 사선 해칭
 lib/color.ts             회사 지정색 위 글자색 판정(WCAG 휘도) — 스포트라이트 카드 전용
@@ -341,6 +342,8 @@ lib/register.ts          등록 폼 상태 모델 — 폼↔요청 변환, 화�
 lib/postcode.ts          주소 검색(카카오 우편번호 팝업). 쓸 기색이 보일 때 스크립트를 받는다
 app/companies/new/page.tsx  기업정보 등록 — 인증 → 작성 → 완료 세 단계 (아래 "기업정보 등록 화면")
 app/companies/[id]/edit/page.tsx  기업정보 수정(소유자) — 섹션별 저장 (아래 "기업정보 수정 화면")
+app/companies/my/page.tsx  내 기업 목록(소유자) — 작성 중인 등록 + 등록한 기업 (아래 "내 기업 목록 화면")
+components/MyCompanies.tsx  내 기업 목록 본문(page.tsx 는 Suspense 껍데기)
 lib/companyEdit.ts       수정 모델 — 소유자 상세→폼, 섹션별 변경 판정, 섹션 저장 요청 조립
 lib/registerMasters.ts   등록·수정 폼 재료(선택지·라벨·제약) 한 번에 받기
 components/register/*    등록 화면 조각. VerifyStep / RegisterForm(자동저장·발행) / 섹션들 / CardPreview / DoneStep
@@ -730,6 +733,38 @@ Claude Design 으로 넘길 핸드오프 문서는 `docs/design/company-list.md`
 
 - 브라우저 클릭 검증 전이다(API 왕복은 확인: meta 두 필드 · "" 비우기 · 필수 칸 빈 값 거절 · 컬렉션 오류 경로 ·
   레퍼런스 이미지 유지 · 공개 설정).
-- 소유자에게 "수정" 으로 가는 길이 등록 완료 화면뿐이다. 공개 상세는 보는 사람이 소유자인지 모른다.
+- ~~소유자에게 "수정" 으로 가는 길이 등록 완료 화면뿐이다~~ → 내 기업 목록(`/companies/my`)에서 간다.
 - 이미지를 바꿔도 이전 파일은 저장소에 남는다(정리 없음 — 백엔드 후속).
 
+## 내 기업 목록 화면 (`/companies/my`)
+
+정본은 Claude Design 의 **"플랜틀리 내 기업 목록"**. 로그인 필요(헤더 "내 기업", 등록 완료 화면에서 진입).
+
+- 두 목록을 함께 받는다 — 등록한 기업 `GET /companies/my`(20개씩, 페이지는 `?page=`)와 작성 중인 등록
+  `GET /companies/drafts`(전부). 기업 목록이 실패하면 오류 화면, 초안 목록만 실패하면 그 자리에 다시 시도.
+- **카드 몸통은 메인 추천 카드와 같다(CoverCard).** 내 기업 카드는 자리만 바꾼다: 커버 위 비공개·운영 배지와
+  "⋯" 메뉴, 주소 뒤 등록일·최근 수정, 아랫단 공개 상태·국세청 인증·수정. 몸통을 고치면 두 화면이 같이 바뀐다.
+  `fixedRows` 로 소개·칩 자리를 두 줄씩 잡아 격자에서 아랫단이 맞는다.
+- 카드의 소유자 전용 값(`visibility`·`businessVerified`·`createdAt`·`updatedAt`)은 이 목록에만 온다.
+  **국세청 인증은 `businessVerified`** 다 — `verified` 는 에디터 선정 배지라 축이 다르다.
+  `likedByMe`·`favoritedByMe` 는 이 목록에서 늘 false 라 쓰지 않는다.
+- **카드를 눌러도 이동하지 않는다.** 갈 곳(소유자 상세)이 아직 없다. 생기면 CoverCard 의 덮개 링크를 그쪽으로 연다.
+  공개 상세로 보내지 않는 이유: 비공개 회사는 공개 상세가 404 다(메뉴의 "공개 페이지 보기"도 공개일 때만).
+- 비공개로 돌릴 때만 확인 창을 띄운다(검색·메인·즐겨찾기에서 사라진다). 삭제는 관리자만 되살릴 수 있다고 알린다.
+  삭제 뒤에는 목록을 다시 받아 빈자리를 다음 페이지 기업으로 채우고, 마지막 장이 비면 앞 장으로 간다.
+- 초안 "이어서 작성" → `/companies/new?resume=사업자번호`. VerifyStep 이 이 기기에 기억한 번호 대신 이 번호로
+  초안과 이어 쓸 인증을 찾는다 — 다른 기기에서 쓰던 초안도 이 길로 이어진다.
+
+### 디자인과 다르게 한 곳
+
+| 디자인 | 구현 | 이유 |
+|---|---|---|
+| 칩에 업종 포함, 태그 3개 + "+N" | 메인 카드의 TagRow(카테고리·태그, 두 줄에 들어가는 만큼) | 카드 몸통을 메인과 같게 유지 |
+| 국세청 미인증 → "인증하기" | 표시만 함 | 서버 재인증은 이미 인증된 회사 전용(미인증은 `COMPANY_NOT_BUSINESS_VERIFIED`) — 최초 인증 API 가 생기면 붙인다 |
+| 커버 없으면 브랜드 컬러 | 사선 해칭 | 메인 추천 카드와 같게 |
+| 카드 클릭 → 관리 화면 | 이동 없음 | 소유자 상세 화면이 아직 없다 |
+
+### 아직 안 한 것
+
+- 브라우저 클릭 검증 전이다(페이지 응답 200 · API 필드는 확인).
+- 소유자 상세 화면 · 미인증 회사의 국세청 인증.

@@ -47,6 +47,9 @@ export default function DoneStep({
           <Link href={`/companies/${companyId}/edit`} className={`btn ${isPublic ? "btn-secondary" : "btn-primary px-5"}`}>
             정보 수정
           </Link>
+          <Link href="/companies/my" className="btn btn-ghost">
+            내 기업 목록
+          </Link>
           <Link href="/" className="btn btn-ghost">
             메인으로
           </Link>

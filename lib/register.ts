@@ -533,7 +533,7 @@ export function formatBusinessNumber(digits: string) {
   return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
 }
 
-/** "3분 전 저장됨" 의 앞부분 */
+/** "3분 전 저장됨" · "3주 전 수정" 의 앞부분 */
 export function relativeTime(iso: string, now: number) {
   const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
   if (seconds < 10) return "방금";
@@ -542,7 +542,16 @@ export function relativeTime(iso: string, now: number) {
   if (minutes < 60) return `${minutes}분 전`;
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours}시간 전`;
-  return `${Math.round(hours / 24)}일 전`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}일 전`;
+  if (days < 30) return `${Math.floor(days / 7)}주 전`;
+  if (days < 365) return `${Math.floor(days / 30)}개월 전`;
+  return `${Math.floor(days / 365)}년 전`;
+}
+
+/** "2026-03-02" — 날짜만. 서버의 LocalDateTime 문자열에서 앞 10자리를 쓴다(시간대 변환 없이) */
+export function formatDate(iso: string) {
+  return iso.slice(0, 10);
 }
 
 /** "10월 7일 14:22" */

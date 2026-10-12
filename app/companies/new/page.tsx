@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { useSession } from "@/components/SessionProvider";
 import DoneStep from "@/components/register/DoneStep";
 import RegisterForm from "@/components/register/RegisterForm";
@@ -28,8 +28,12 @@ import type { CompanyDraftResponse, CompanyVerificationResponse } from "@/types/
  * (VerifyStep 이 마지막 사업자번호로 초안과 인증을 되찾는다).
  *
  * 로그인이 필요하다. 업로드·초안·인증이 전부 로그인 사용자 기준이다.
+ *
+ * `?resume=사업자번호` 로 들어오면(내 기업 목록의 "이어서 작성") 이 기기에 기억한 번호 대신 그 번호의 초안을 찾는다.
  */
-export default function CompanyCreatePage() {
+export default function CompanyCreatePage({ searchParams }: PageProps<"/companies/new">) {
+  const { resume } = use(searchParams);
+  const resumeNumber = typeof resume === "string" ? resume : null;
   const { user, loading } = useSession();
   const router = useRouter();
 
@@ -43,8 +47,11 @@ export default function CompanyCreatePage() {
 
   // 비로그인이면 로그인 화면으로 보냈다가 여기로 돌아오게 한다.
   useEffect(() => {
-    if (!loading && !user) router.replace(`/login?next=${encodeURIComponent("/companies/new")}`);
-  }, [loading, user, router]);
+    if (!loading && !user) {
+      const next = resumeNumber ? `/companies/new?resume=${resumeNumber}` : "/companies/new";
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
+    }
+  }, [loading, user, router, resumeNumber]);
 
   const loadMasters = useCallback(
     (signal?: AbortSignal) => loadRegisterMasters(["my-company-create"], signal),
@@ -123,6 +130,7 @@ export default function CompanyCreatePage() {
 
   return (
     <VerifyStep
+      resumeBusinessNumber={resumeNumber}
       sectionTotal={SECTIONS.length}
       countFilledSections={(draft: CompanyDraftResponse) =>
         Object.values(

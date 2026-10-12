@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import type {
   CompanyDetailResponse,
   CompanyDraftResponse,
+  CompanyDraftSummary,
   CompanyPublicResponse,
   CompanySearchQuery,
   CompanyVisibility,
@@ -113,6 +114,11 @@ export function saveDraft(businessNumber: string, payload: MyCompanyCreateReques
   return api.put<void>(`/companies/drafts/${businessNumber}`, payload);
 }
 
+/** 내 초안 목록(최근 저장순). 사업자번호를 몰라도 이어 쓸 초안을 고를 수 있다. 회사명은 아직 안 썼으면 null. */
+export function listDrafts(signal?: AbortSignal) {
+  return api.get<CompanyDraftSummary[]>("/companies/drafts", undefined, signal);
+}
+
 /** 초안 폐기. 없어도 성공(멱등). 발행이 성공하면 서버가 알아서 지우므로 "작성 포기"에서만 부른다. */
 export function deleteDraft(businessNumber: string) {
   return api.delete<void>(`/companies/drafts/${businessNumber}`);
@@ -167,6 +173,11 @@ export function replaceCollection(id: number, name: CollectionName, items: unkno
 /** 공개/비공개 — 토글이 아니라 목표 상태 지정(멱등) */
 export function changeVisibility(id: number, visibility: CompanyVisibility) {
   return api.patch<void>(`/companies/${id}/visibility`, { visibility });
+}
+
+/** 소유자 삭제(소프트). 멱등. 되살리기는 관리자 복구로만 된다 — 화면은 삭제 전에 그 사실을 알린다. */
+export function deleteCompany(id: number) {
+  return api.delete<void>(`/companies/${id}`);
 }
 
 /** 재인증 — 국세청 인증 회사의 대표자명·개업일자는 이 길로만 바꾼다(사업자번호는 서버 저장값을 쓴다) */

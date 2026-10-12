@@ -109,9 +109,30 @@ export type CompanySummary = {
   categoryNames: string[];
   tagNames: string[];
   industryNames: string[];
-  /** 로그인 뷰어 기준. 익명이면 항상 false */
+  /** 로그인 뷰어 기준. 익명이면 항상 false. 내 기업 목록에서는 채워지지 않으므로(항상 false) 쓰지 않는다 */
   likedByMe: boolean;
   favoritedByMe: boolean;
+  /*
+   * 아래 넷은 **내 기업 목록(`/companies/my`)에만** 실린다. 다른 경로에서는 키 자체가 없다.
+   */
+  visibility?: CompanyVisibility;
+  /** 국세청 사업자 확인. 위의 verified(에디터 선정 배지)와 다른 축이다 */
+  businessVerified?: boolean;
+  createdAt?: string;
+  /** 회사 기본 정보의 마지막 수정. 컬렉션(태그·이미지 등)만 바꾼 수정은 반영되지 않는다 */
+  updatedAt?: string;
+};
+
+/**
+ * GET /api/v1/companies/drafts — 내 임시저장 초안 한 줄(최근 저장순, 페이징 없음).
+ * 고르는 화면용이라 폼 전체는 없다. 이어 쓸 때는 businessNumber 로 단건 조회한다.
+ */
+export type CompanyDraftSummary = {
+  /** 하이픈 없는 숫자 10자리 */
+  businessNumber: string;
+  /** 초안에 적어 둔 회사명. 아직 안 썼으면 null */
+  companyName: string | null;
+  updatedAt: string;
 };
 
 /**

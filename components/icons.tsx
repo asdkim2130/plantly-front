@@ -352,3 +352,77 @@ export function CheckCircleIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/** 국세청 미인증 — 빈 방패 */
+export function ShieldIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" />
+    </Svg>
+  );
+}
+
+/** 비공개 — 사선 그은 눈 */
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.5 6.6C3.8 8.3 2 12 2 12s4 7 10 7a9.6 9.6 0 0 0 4.4-1M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </Svg>
+  );
+}
+
+/** 운영 큐레이션 배지(에디터 선정·추천 노출·스팟라이트 고정) — 채운 별 */
+export function StarIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" />
+    </svg>
+  );
+}
+
+/** 더 보기 메뉴 — 가로 점 셋 */
+export function MoreIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <circle cx="5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
+    </svg>
+  );
+}
+
+export function PencilIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20h4L19 9l-4-4L4 16z" />
+      <path d="M14 6l4 4" />
+    </Svg>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+    </Svg>
+  );
+}
+
+/** 작성 중인 등록(초안) — 문서 + 연필 */
+export function DraftIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <path d="M14 3v6h6M9 15l5-5 2 2-5 5H9z" />
+    </Svg>
+  );
+}
+
+/** 내 기업 — 창문 달린 건물 */
+export function OfficeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M10 21v-4h4v4" />
+    </Svg>
+  );
+}
