@@ -5,7 +5,7 @@
  * 섹션 파일마다 같은 마크업을 되풀이하지 않으려고 모았다. 생김새는 globals.css 의 등록 화면 클래스가 준다.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { AlertCircleIcon, CloseIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
 import { formatBytes, uploadImage } from "@/lib/meta";
@@ -118,14 +118,17 @@ export function RemovableChip({
   prefix,
   onRemove,
   gone,
+  muted,
 }: {
   children: React.ReactNode;
   prefix?: string;
   onRemove: () => void;
   gone?: boolean;
+  /** 저장돼 있지만 공개되지 않는 항목(등급 초과) */
+  muted?: boolean;
 }) {
   return (
-    <span className={`tchip ${gone ? "gone" : ""}`}>
+    <span className={`tchip ${gone ? "gone" : ""} ${muted ? "opacity-55 grayscale" : ""}`}>
       {prefix && <small>{prefix}</small>}
       {children}
       <button type="button" className="tx" onClick={onRemove} aria-label="빼기">
@@ -323,6 +326,13 @@ export function ProgressBar({ percent }: { percent: number }) {
   );
 }
 
+/**
+ * 섹션 상자 아래에 붙일 것(수정 화면의 "이 섹션 저장" 줄). 섹션 컴포넌트들이 등록·수정에서 같은 것을 쓰므로
+ * 버튼을 props 로 하나하나 내려보내지 않고, 수정 화면이 이 컨텍스트로 섹션 글자(A~K)마다 꼬리를 꽂는다.
+ * 등록 화면은 값을 주지 않아 아무것도 그리지 않는다.
+ */
+export const SectionFooterContext = createContext<((letter: string) => React.ReactNode) | null>(null);
+
 /** 섹션 상자 + 머리(A · 기본 정보 · 오른쪽 부제). 목차가 id 로 찾아 스크롤한다 */
 export function Section({
   id,
@@ -347,8 +357,14 @@ export function Section({
         {sub && <span className="ml-auto text-xs text-faint">{sub}</span>}
       </div>
       {children}
+      <SectionFooter letter={letter} />
     </section>
   );
+}
+
+function SectionFooter({ letter }: { letter: string }) {
+  const render = useContext(SectionFooterContext);
+  return render ? render(letter) : null;
 }
 
 /**

@@ -287,7 +287,9 @@ function ImageActions({ onReplace, onRemove }: { onReplace: () => void; onRemove
   );
 }
 
-export function BusinessSection({ form, update, errors, masters, limits, grade }: SectionProps) {
+export function BusinessSection({ form, update, errors, masters, limits, grade, mode }: SectionProps) {
+  // 수정에서는 고른 걸 다시 눌러도 풀리지 않는다 — PATCH 가 enum 을 비우지 못해 저장해도 아무 일이 없다.
+  const allowClear = mode !== "edit";
   const max = (field: string) => ruleValue(masters.constraints, field, "maxLength");
   const trlOptions = masters.options.trlLevel ?? [];
   const priceOptions = masters.options.pricingType ?? [];
@@ -298,12 +300,14 @@ export function BusinessSection({ form, update, errors, masters, limits, grade }
         label="기술 성숙도 (TRL)"
         options={trlOptions}
         value={form.trlLevel}
+        allowClear={allowClear}
         onChange={(value) => update({ trlLevel: value as TrlLevel | null })}
       />
       <OptionGroup
         label="가격 정책"
         options={priceOptions}
         value={form.pricingType}
+        allowClear={allowClear}
         onChange={(value) => update({ pricingType: value as PricingType | null })}
       />
       <TextField
@@ -349,6 +353,13 @@ export function BusinessSection({ form, update, errors, masters, limits, grade }
           </span>
           <div className="rounded-lg border border-dashed border-line bg-field px-3.5 py-3 text-[13px] leading-normal text-muted">
             현재 등급(<b className="font-medium">{grade}</b>)에서는 소개 동영상을 넣을 수 없습니다.
+            {form.videoUrl && (
+              <>
+                {" "}
+                저장된 링크(<span className="break-all">{form.videoUrl}</span>)는 지금 공개되지 않으며, 등급이 오르면
+                다시 보입니다.
+              </>
+            )}
           </div>
         </div>
       )}
@@ -356,17 +367,22 @@ export function BusinessSection({ form, update, errors, masters, limits, grade }
   );
 }
 
-/** 하나만 고르는 버튼 묶음. 고른 걸 다시 누르면 풀린다(선택 항목이라 "안 고름"으로 돌아갈 길이 필요하다) */
+/**
+ * 하나만 고르는 버튼 묶음. 등록에서는 고른 걸 다시 누르면 풀린다(선택 항목이라 "안 고름"으로 돌아갈 길이 필요하다).
+ * 수정에서는 allowClear=false 라 풀리지 않는다.
+ */
 function OptionGroup({
   label,
   options,
   value,
   onChange,
+  allowClear,
 }: {
   label: string;
   options: { value: string; label: string }[];
   value: string | null;
   onChange: (value: string | null) => void;
+  allowClear: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5" role="radiogroup" aria-label={label}>
@@ -381,7 +397,10 @@ function OptionGroup({
               role="radio"
               aria-checked={on}
               className={`opt ${on ? "on" : ""}`}
-              onClick={() => onChange(on ? null : option.value)}
+              onClick={() => {
+                if (!on) onChange(option.value);
+                else if (allowClear) onChange(null);
+              }}
             >
               <span className="rd" />
               {option.label}

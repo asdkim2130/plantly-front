@@ -5,13 +5,18 @@
 
 import { api } from "@/lib/api";
 import type {
+  CompanyDetailResponse,
   CompanyDraftResponse,
   CompanyPublicResponse,
   CompanySearchQuery,
+  CompanyVisibility,
   CompanyShowcaseResponse,
   CompanyStatsResponse,
   CompanySubscriptionResponse,
+  CompanyReverificationRequest,
+  CompanyReverificationResponse,
   CompanySummary,
+  CompanyUpdateRequest,
   CompanyVerificationRequest,
   CompanyVerificationResponse,
   IdResponse,
@@ -120,4 +125,51 @@ export function deleteDraft(businessNumber: string) {
  */
 export function createCompany(payload: MyCompanyCreateRequest) {
   return api.post<IdResponse>("/companies", payload);
+}
+
+// ===== 회사 수정(소유자) =====
+// 본체는 sparse PATCH 하나, 컬렉션은 각자 전체 교체 PUT 이다 — 한 번에 묶는 트랜잭션이 없어 화면은 섹션별로 저장한다.
+
+/** 소유자 전용 상세. 꺼진 항목(active=false)과 수정 화면용 값(meta.postalCode · 레퍼런스 이미지 전부)이 함께 온다. */
+export function getMyCompany(id: number, signal?: AbortSignal) {
+  return api.get<CompanyDetailResponse>(`/companies/${id}/private`, undefined, signal);
+}
+
+/** 본체 부분 수정. 보낸 키만 바뀐다("" = 비우기). 등급 정책은 바뀐 부분만 다시 본다. */
+export function updateCompany(id: number, patch: CompanyUpdateRequest) {
+  return api.patch<void>(`/companies/${id}`, patch);
+}
+
+/**
+ * 컬렉션 전체 교체 엔드포인트 이름(경로 끝) → 폼 필드 이름. 서버 검증 오류가 `[0].phone` 처럼
+ * 컬렉션 이름 없이 오므로, 화면이 이 짝으로 `contacts[0].phone` 을 되짓는다.
+ */
+export const COLLECTION_FIELD = {
+  tags: "tagNames",
+  materials: "materialNames",
+  equipment: "equipmentNames",
+  images: "images",
+  contacts: "contacts",
+  references: "references",
+  categories: "categoryIds",
+  industries: "industryIds",
+  certifications: "certifications",
+  countries: "countryIds",
+  regions: "domesticRegionIds",
+} as const;
+export type CollectionName = keyof typeof COLLECTION_FIELD;
+
+/** 컬렉션 하나를 통째로 바꾼다. 빈 배열 = 전부 비우기. 순서는 배열 순서(displayOrder 는 서버가 매긴다). */
+export function replaceCollection(id: number, name: CollectionName, items: unknown[]) {
+  return api.put<void>(`/companies/${id}/${name}`, items);
+}
+
+/** 공개/비공개 — 토글이 아니라 목표 상태 지정(멱등) */
+export function changeVisibility(id: number, visibility: CompanyVisibility) {
+  return api.patch<void>(`/companies/${id}/visibility`, { visibility });
+}
+
+/** 재인증 — 국세청 인증 회사의 대표자명·개업일자는 이 길로만 바꾼다(사업자번호는 서버 저장값을 쓴다) */
+export function reverifyCompany(id: number, request: CompanyReverificationRequest) {
+  return api.post<CompanyReverificationResponse>(`/companies/${id}/verification`, request);
 }

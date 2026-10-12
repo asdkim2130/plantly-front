@@ -10,7 +10,8 @@ import { ErrorLine, FieldHead, Section, TextField, uploadRuleLabel } from "@/com
 import { ruleValue } from "@/lib/meta";
 import { sectionId, type SectionProps } from "@/lib/register";
 
-export function GallerySection({ form, update, errors, masters, limits }: SectionProps) {
+export function GallerySection({ form, update, errors, masters, limits, hidden }: SectionProps) {
+  const hiddenCount = hidden ? form.images.filter((url) => hidden.images.has(url)).length : 0;
   return (
     <Section
       id={sectionId("H")}
@@ -33,6 +34,7 @@ export function GallerySection({ form, update, errors, masters, limits }: Sectio
         onChange={(next) => update((f) => ({ images: next(f.images) }))}
         max={limits.maxDetailImages}
         upload={masters.upload}
+        inactive={hidden?.images}
         emptyHint={
           <>
             <ImageIcon size={20} />
@@ -42,6 +44,12 @@ export function GallerySection({ form, update, errors, masters, limits }: Sectio
           </>
         }
       />
+      {hiddenCount > 0 && (
+        <p className="fhint">
+          “비공개” {hiddenCount}장은 저장돼 있지만 현재 등급 한도({limits.maxDetailImages}장)를 넘겨 공개되지 않습니다.
+          한도 안으로 줄여 저장하면 남긴 장은 모두 다시 공개됩니다.
+        </p>
+      )}
       <ErrorLine message={errors.images ?? errors["images.imageUrl"]} />
     </Section>
   );
@@ -189,7 +197,7 @@ export function ReferenceSection({ form, update, errors, masters, limits, grade 
   );
 }
 
-export function VisibilitySection({ form, update }: SectionProps) {
+export function VisibilitySection({ form, update, mode }: SectionProps) {
   const isPublic = form.visibility === "PUBLIC";
   return (
     <Section id={sectionId("K")} letter="K" title="공개 설정">
@@ -208,7 +216,9 @@ export function VisibilitySection({ form, update }: SectionProps) {
           <div className="text-sm font-medium">{isPublic ? "공개" : "비공개"}</div>
           <p className="fhint mt-0.5">
             {isPublic
-              ? "발행하면 검색 목록과 메인 화면에 노출됩니다."
+              ? mode === "edit"
+                ? "검색 목록과 메인 화면에 노출됩니다."
+                : "발행하면 검색 목록과 메인 화면에 노출됩니다."
               : "검색 · 메인에 노출되지 않고 나만 볼 수 있습니다. 언제든 공개로 바꿀 수 있습니다."}
           </p>
         </div>

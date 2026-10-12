@@ -309,6 +309,79 @@ export type CompanyPublicResponse = {
   industries: IndustryRef[];
 };
 
+/**
+ * GET /api/v1/companies/{id}/private — 소유자 전용 상세. 공개 응답(profile)에 운영 정보(meta)를 덧붙인 합성이다.
+ * profile 은 공개 응답 그대로라, 공개에서 일부러 줄인 값(우편번호 · 레퍼런스 이미지 전체)은 meta 로 따로 온다.
+ * 꺼진(등급 초과로 숨겨진) 카테고리·갤러리 이미지도 `active: false` 로 함께 온다.
+ */
+export type CompanyDetailResponse = {
+  profile: CompanyPublicResponse;
+  meta: CompanyManagementMeta;
+};
+
+export type CompanyManagementMeta = {
+  businessNumber: string | null;
+  /** 공개 profile 에는 없다 — 수정 화면용 */
+  postalCode: string;
+  registrationSource: RegistrationSource;
+  registeredBy: number | null;
+  ownerUserId: number | null;
+  claimed: boolean;
+  spotlightOrder: number;
+  verified: boolean;
+  /** true 면 대표자명·개업일자는 일반 수정으로 못 바꾼다(재인증으로만) */
+  businessVerified: boolean;
+  businessVerifiedAt: string | null;
+  featured: boolean;
+  spotlight: boolean;
+  deleted: boolean;
+  visibility: CompanyVisibility;
+  /** false = 동영상이 저장돼 있지만 등급이 낮아 공개 화면에서 가려진 상태 */
+  videoVisibleToPublic: boolean;
+  /**
+   * 대표 레퍼런스의 이미지 전부(꺼진 것 포함, 표시 순서). profile.representativeReference 는 표지 한 장뿐이라,
+   * 레퍼런스 전체 교체(PUT) 전에 수정 화면은 이 목록으로 채워야 나머지 장이 지워지지 않는다.
+   */
+  representativeReferenceImages: GalleryImageResponse[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * PATCH /api/v1/companies/{id} — 본체 부분 수정. **키 생략(=null)은 미변경, "" 는 비우기.**
+ * 기업명·도로명·상세주소는 비울 수 없고, enum·날짜는 비우기를 지원하지 않는다(값이 오면 교체만).
+ * 우편번호는 5자리 숫자만(빈 값 불가).
+ */
+export type CompanyUpdateRequest = Partial<{
+  companyName: string;
+  ceoName: string;
+  establishmentDate: string;
+  postalCode: string;
+  roadAddress: string;
+  jibunAddress: string;
+  detailAddress: string;
+  website: string;
+  logoUrl: string;
+  coverImageUrl: string;
+  introTitle: string;
+  content: string;
+  trlLevel: TrlLevel;
+  videoUrl: string;
+  leadTime: string;
+  asInfo: string;
+  pricingType: PricingType;
+  brandColor: string;
+}>;
+
+/** POST /api/v1/companies/{id}/verification — 국세청 인증 회사의 대표자명·개업일자 변경 창구 */
+export type CompanyReverificationRequest = { ceoName: string; businessStartDate: string };
+export type CompanyReverificationResponse = {
+  businessNumber: string;
+  ceoName: string;
+  businessStartDate: string;
+  verifiedAt: string;
+};
+
 /** GET /api/v1/companies/{id}/subscription — 소유자 전용 */
 export type CompanySubscriptionResponse = {
   companyId: number;
@@ -321,6 +394,8 @@ export type CompanySubscriptionResponse = {
   startedAt: string; // yyyy-MM-dd
   /** null = 무기한(만료 없음) */
   expiresAt: string | null;
+  /** effectiveGrade 가 허용하는 입력 한도. 수정 폼의 개수 제어 근거 */
+  limits: GradeLimits;
 };
 
 // ===== 옵션(마스터) =====
