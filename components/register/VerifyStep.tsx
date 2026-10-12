@@ -45,6 +45,11 @@ function readBusinessNumber() {
 }
 
 type Props = {
+  /**
+   * 이어 쓸 사업자번호를 밖에서 정해 준다(내 기업 목록의 "이어서 작성"). 있으면 이 기기에 기억한 번호 대신 쓴다 —
+   * 목록은 서버에서 읽은 것이라 다른 기기에서 쓰던 초안도 이 길로 이어 쓸 수 있다.
+   */
+  resumeBusinessNumber?: string | null;
   /** 작성 화면으로 넘어간다. draft 가 있으면 이어쓰기, null 이면 새로 쓰기 */
   onStart: (verification: CompanyVerificationResponse, draft: CompanyDraftResponse | null) => void;
   /** 초안이 있는 경우의 "n개 섹션 작성" 을 세는 함수(폼 모델을 아는 쪽이 준다) */
@@ -72,7 +77,7 @@ const BLOCKED: Record<string, { title: string; body: string }> = {
 
 const HOMETAX_URL = "https://www.hometax.go.kr";
 
-export default function VerifyStep({ onStart, countFilledSections, sectionTotal }: Props) {
+export default function VerifyStep({ resumeBusinessNumber, onStart, countFilledSections, sectionTotal }: Props) {
   const [businessNumber, setBusinessNumber] = useState("");
   const [ceoName, setCeoName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -88,9 +93,10 @@ export default function VerifyStep({ onStart, countFilledSections, sectionTotal 
   const [discarding, setDiscarding] = useState(false);
   const [now] = useState(() => Date.now());
 
-  // 이 기기에서 마지막으로 인증한 번호가 있으면 국세청을 부르지 않고 초안부터 찾아본다.
+  // 이어 쓸 번호(목록에서 고른 번호, 없으면 이 기기에서 마지막으로 인증한 번호)가 있으면 국세청을 부르지 않고
+  // 초안부터 찾아본다.
   useEffect(() => {
-    const stored = readBusinessNumber();
+    const stored = resumeBusinessNumber || readBusinessNumber();
     if (!stored) return;
     const controller = new AbortController();
     getDraft(stored, controller.signal).then(
@@ -107,11 +113,13 @@ export default function VerifyStep({ onStart, countFilledSections, sectionTotal 
       (e) => {
         if (controller.signal.aborted) return;
         // 초안이 없거나(발행·폐기됨) 인증 이력이 없다 — 더 기억할 이유가 없다.
-        if (e instanceof ApiError && (e.isNotFound || e.code === "VERIFICATION_NOT_FOUND")) rememberBusinessNumber(null);
+        // (목록에서 고른 번호면 기기에 기억한 번호와 다를 수 있어 그 기록은 건드리지 않는다.)
+        if (!resumeBusinessNumber && e instanceof ApiError && (e.isNotFound || e.code === "VERIFICATION_NOT_FOUND"))
+          rememberBusinessNumber(null);
       },
     );
     return () => controller.abort();
-  }, []);
+  }, [resumeBusinessNumber]);
 
   const digits = businessNumber.replace(/\D/g, "");
   const locked = checking || resume !== null;

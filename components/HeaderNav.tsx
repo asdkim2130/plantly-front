@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useSession } from "@/components/SessionProvider";
+import { OfficeIcon } from "@/components/icons";
 import { logout } from "@/lib/auth";
 
 /**
@@ -69,6 +70,18 @@ export default function HeaderNav() {
         <span aria-hidden className="skel h-[31px] w-[68px] rounded-lg" />
       ) : user ? (
         <div className="flex items-center gap-2.5">
+          {/* 좁은 화면에서도 남긴다(아이콘만) — 소유자가 자기 기업으로 돌아오는 유일한 길이다. */}
+          <Link
+            href="/companies/my"
+            aria-label="내 기업"
+            aria-current={pathname === "/companies/my" ? "page" : undefined}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap no-underline ${
+              pathname === "/companies/my" ? "bg-brand-100 font-medium text-brand" : "text-ink hover:text-brand"
+            }`}
+          >
+            <OfficeIcon size={15} />
+            <span className="hidden sm:inline">내 기업</span>
+          </Link>
           <span className="hidden max-w-[140px] truncate text-sm text-ink sm:inline">
             {user.name}
           </span>
