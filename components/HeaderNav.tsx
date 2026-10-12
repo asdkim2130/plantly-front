@@ -46,13 +46,20 @@ export default function HeaderNav() {
       >
         기업 찾기
       </Link>
-      {/* 아직 없는 화면들. 라우트가 생기면 Link 로 바꾼다. */}
+      {/* 아직 없는 화면. 라우트가 생기면 Link 로 바꾼다. */}
       <span className="hidden cursor-not-allowed text-sm whitespace-nowrap text-muted md:inline">
         카테고리
       </span>
-      <span className="hidden cursor-not-allowed text-sm whitespace-nowrap text-muted md:inline">
+      {/* 비로그인이면 등록 화면이 로그인으로 보냈다가 돌려보낸다(여기서 갈라 두지 않는다). */}
+      <Link
+        href="/companies/new"
+        aria-current={pathname === "/companies/new" ? "page" : undefined}
+        className={`hidden text-sm whitespace-nowrap no-underline md:inline ${
+          pathname === "/companies/new" ? "font-medium text-brand" : "text-ink"
+        }`}
+      >
         기업정보 등록
-      </span>
+      </Link>
 
       {/*
         첫 확인이 끝나기 전에는 자리만 잡아 둔다. "로그인"을 먼저 그렸다가 이름으로 바꾸면

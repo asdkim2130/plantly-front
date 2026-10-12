@@ -10,7 +10,21 @@ export type ApiResponse<T> = {
   success: boolean;
   message?: string;
   data?: T;
+  /**
+   * 실패 응답의 분기용 식별자. 백엔드 `ErrorCode` enum 의 **상수 이름 그대로**다
+   * (`VERIFICATION_EXPIRED`, `BUSINESS_NUMBER_TAKEN` …). 사람이 읽는 문구는 `error` 이고,
+   * 화면은 문구가 아니라 이 값으로 갈래를 나눈다 — 문구는 다듬어질 수 있다.
+   */
+  code?: string;
   error?: string;
+  /** Bean Validation 실패에만 실린다. 폼 순서(DTO 선언 순서)로 정렬돼 있어 첫 원소가 곧 스크롤 대상이다 */
+  errors?: ValidationError[];
+};
+
+/** 검증 위반 1건. field 는 요청 본문의 경로 그대로다(`detailAddress`, `contacts[0].phone`) */
+export type ValidationError = {
+  field?: string;
+  message: string;
 };
 
 /** page 는 1-based. 요청도 ?page=1 이 첫 페이지다. */
@@ -37,8 +51,10 @@ export type RegistrationSource = "USER" | "ADMIN";
 export type TrlLevel = "PROTOTYPE" | "MASS_PRODUCTION" | "GLOBAL_STANDARD";
 export type PricingType = "FIXED" | "CONSULTATION" | "PROJECT_BASED";
 export type ImageType = "DETAIL" | "PROJECT";
-export type CertificationType = "MANAGEMENT_SYSTEM" | "INDUSTRY_SPECIFIC" | "MARKET_ACCESS";
-export type RegionLevel = "NATION" | "SIDO" | "SIGUNGU";
+/** ETC 는 "기타" 앵커 한 건뿐이다 — 고르면 인증명을 직접 적어 보낸다(customName) */
+export type CertificationType = "MANAGEMENT_SYSTEM" | "INDUSTRY_SPECIFIC" | "MARKET_ACCESS" | "ETC";
+/** NATION(전국)·REGION_GROUP(수도권 같은 권역)은 법정동에 대응 행이 없는 합성 단계다 */
+export type RegionLevel = "NATION" | "REGION_GROUP" | "SIDO" | "SIGUNGU";
 export type Continent =
   | "ASIA" | "EUROPE" | "AFRICA" | "NORTH_AMERICA" | "SOUTH_AMERICA" | "OCEANIA" | "ANTARCTICA";
 export type UserStatus = "ACTIVE" | "SUSPENDED" | "WITHDRAWN";
@@ -352,3 +368,137 @@ export type DomesticRegionPublicResponse = {
   level: RegionLevel;
   children: DomesticRegionPublicResponse[];
 };
+// ===== 회사 등록(자가등록) =====
+
+/** POST /api/v1/companies/verification — 국세청 사업자 확인. 하이픈은 있어도 없어도 된다 */
+export type CompanyVerificationRequest = {
+  businessNumber: string;
+  ceoName: string;
+  /** yyyy-MM-dd. 설립일이 아니라 사업자등록증의 개업연월일이다 */
+  businessStartDate: string;
+};
+
+/**
+ * 등급이 허용하는 입력 한도. 폼이 개수를 막는 근거다 — **프론트가 등급→한도 표를 들고 있지 않는다.**
+ * videoAllowed=false 여도 서버는 videoUrl 을 거절하지 않는다(공개 조회에서만 가린다). 자물쇠는 화면 몫이다.
+ */
+export type GradeLimits = {
+  maxCategories: number;
+  maxDetailImages: number;
+  maxReferenceImages: number;
+  videoAllowed: boolean;
+};
+
+export type CompanyVerificationResponse = {
+  verificationId: number;
+  /** 정규화된 숫자 10자리(하이픈 없음) */
+  businessNumber: string;
+  ceoName: string;
+  businessStartDate: string; // yyyy-MM-dd
+  expiresAt: string; // ISO LocalDateTime
+  /** 이 인증으로 회사를 만들면 받을 등급(예고) */
+  initialGrade: CompanyGrade;
+  limits: GradeLimits;
+};
+
+export type ContactRequest = {
+  contactName: string;
+  position: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
+export type ImageRequest = { imageUrl: string; imageType: ImageType };
+
+export type ReferenceRequest = {
+  projectTitle: string | null;
+  achievements: string | null;
+  partners: string | null;
+  period: string | null;
+  imageUrls: string[];
+};
+
+/** 마스터에서 고른 인증은 id 만, "기타"(ETC)를 골랐을 때만 customName 을 함께 보낸다 */
+export type CertificationRequest = { certificationId: number; customName: string | null };
+
+/**
+ * POST /api/v1/companies 본문이자 초안(PUT /drafts/{businessNumber}) payload.
+ * 신원 3종(사업자번호·대표자명·개업일자)은 자리 자체가 없다 — 서버가 인증본에서 채운다.
+ * 표시 순서(displayOrder)는 보내지 않는다. 배열 순서가 곧 순서다.
+ */
+export type MyCompanyCreateRequest = {
+  verificationId: number | null;
+  companyName: string | null;
+  postalCode: string | null;
+  roadAddress: string | null;
+  jibunAddress: string | null;
+  detailAddress: string | null;
+  website: string | null;
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+  introTitle: string | null;
+  content: string | null;
+  trlLevel: TrlLevel | null;
+  videoUrl: string | null;
+  leadTime: string | null;
+  asInfo: string | null;
+  pricingType: PricingType | null;
+  brandColor: string | null;
+  visibility: CompanyVisibility | null;
+  contacts: ContactRequest[] | null;
+  images: ImageRequest[] | null;
+  references: ReferenceRequest[] | null;
+  materialNames: string[] | null;
+  equipmentNames: string[] | null;
+  tagNames: string[] | null;
+  categoryIds: number[] | null;
+  certifications: CertificationRequest[] | null;
+  countryIds: number[] | null;
+  domesticRegionIds: number[] | null;
+  industryIds: number[] | null;
+};
+
+/**
+ * GET /api/v1/companies/drafts/{businessNumber}.
+ * `verification` 은 **지금 이 번호로 발행에 쓸 인증**이다(payload.verificationId 는 저장 당시 값이라 낡을 수 있다).
+ * 이어쓸 인증이 없으면 null — 사업자 인증부터 다시 받아야 한다.
+ */
+export type CompanyDraftResponse = {
+  payload: MyCompanyCreateRequest;
+  updatedAt: string; // ISO LocalDateTime
+  verification: CompanyVerificationResponse | null;
+};
+
+// ===== 메타(폼을 그리는 근거) =====
+
+/** GET /api/v1/meta/options — 서버가 라벨을 소유하는 선택지(trlLevel·pricingType) */
+export type EnumOption = { value: string; label: string };
+export type OptionsResponse = Record<string, EnumOption[]>;
+
+/** 규칙 1건. type 은 required · maxLength · minLength · maxItems 등 */
+export type ConstraintRule = { type: string; value?: number; message: string };
+
+/** 규칙도 하위 필드도 없는 키는 빠져서 온다(빈 배열을 내려보내지 않는다) */
+export type FieldConstraints = {
+  field?: string;
+  rules?: ConstraintRule[];
+  fields?: FieldConstraints[];
+  items?: FieldConstraints;
+};
+
+/** GET /api/v1/meta/constraints/{form} — fields 는 폼 순서 */
+export type FormConstraintsResponse = {
+  form: string;
+  rules?: ConstraintRule[];
+  fields?: FieldConstraints[];
+};
+
+/** GET /api/v1/meta/upload — 한 장당 제약. 배포마다 달라질 수 있어 화면에 박지 않는다 */
+export type UploadConstraintsResponse = {
+  maxFileSizeBytes: number;
+  allowedContentTypes: string[];
+  allowedExtensions: string[];
+};
+
+/** POST /api/v1/uploads. url 은 상대경로(/api/v1/files/…)라 그대로 <img src> 와 요청 본문에 쓴다 */
+export type UploadResponse = { url: string; contentType: string; size: number };

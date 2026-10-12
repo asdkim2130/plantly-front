@@ -8,7 +8,7 @@
  * 대응: domain/company/enums/{TrlLevel,PricingType}.java, company/certification/CertificationType.java
  */
 
-import type { CertificationType, PricingType, TrlLevel } from "@/types/api";
+import type { CertificationType, Continent, PricingType, TrlLevel } from "@/types/api";
 
 export const TRL_LEVEL_LABEL: Record<TrlLevel, string> = {
   PROTOTYPE: "프로토타입",
@@ -26,6 +26,21 @@ export const CERTIFICATION_TYPE_LABEL: Record<CertificationType, string> = {
   MANAGEMENT_SYSTEM: "경영시스템",
   INDUSTRY_SPECIFIC: "산업특화",
   MARKET_ACCESS: "시장진입",
+  ETC: "기타",
+};
+
+/**
+ * 대륙 표기. 백엔드 `CountryPublicResponse` 주석이 "표현 계층 관심사" 로 정해 둔 값이라 서버가 라벨을 주지 않는다.
+ * 순서는 등록 화면의 대륙 탭 순서다(교역 빈도가 높은 쪽부터).
+ */
+export const CONTINENT_LABEL: Record<Continent, string> = {
+  ASIA: "아시아",
+  EUROPE: "유럽",
+  NORTH_AMERICA: "북미",
+  SOUTH_AMERICA: "남미",
+  AFRICA: "아프리카",
+  OCEANIA: "오세아니아",
+  ANTARCTICA: "남극",
 };
 
 /**

@@ -2,7 +2,7 @@
  * 디자인에 쓰인 SVG 아이콘 모음. 전부 24×24 뷰박스에 stroke 1.5 로 그려져 있어
  * size 만 바꿔 끼우면 굵기가 자연스럽게 따라온다.
  *
- * 아이콘 라이브러리를 쓰지 않는 이유: 디자인 원본이 이 8개만 쓰고,
+ * 아이콘 라이브러리를 쓰지 않는 이유: 디자인 원본이 이 몇 개만 쓰고,
  * 패키지를 하나 더 얹는 것보다 여기 모아두는 편이 추적이 쉽다.
  */
 
@@ -232,5 +232,123 @@ export function PlayIcon({ size = 16, className }: IconProps) {
     >
       <path d="M8 5l12 7-12 7z" />
     </svg>
+  );
+}
+
+// ── 기업정보 등록 화면 ─────────────────────────────────────────────
+
+/** 입력칸 아래 오류 한 줄·배너 앞(동그라미 느낌표) */
+export function AlertCircleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v5.5M12 16.5v.01" />
+    </Svg>
+  );
+}
+
+/** 등록할 수 없는 사업자(휴업·폐업·미등록) — 금지 표시 */
+export function BanIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M5.6 5.6l12.8 12.8" />
+    </Svg>
+  );
+}
+
+/** 이미 등록된 사업자번호 — 공장 지붕 */
+export function BuildingIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 21V9l6 3V9l6 3V4l6 3v14z" />
+    </Svg>
+  );
+}
+
+/** 시도 횟수 초과·국세청 지연 — 시계 */
+export function ClockIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </Svg>
+  );
+}
+
+/** 돌아가는 원호. `animate-spin` 과 함께 쓴다 */
+export function SpinnerIcon({ strokeWidth = 2, ...props }: IconProps) {
+  return (
+    <Svg {...props} strokeWidth={strokeWidth}>
+      <path d="M21 12a9 9 0 1 1-9-9" />
+    </Svg>
+  );
+}
+
+/** 자동저장 완료 — 구름 + 체크 */
+export function CloudCheckIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 8a4 4 0 0 1 0 10z" />
+      <path d="M9.5 13l2 2 3.5-3.5" />
+    </Svg>
+  );
+}
+
+/** 자동저장 실패 — 구름 + 느낌표 */
+export function CloudAlertIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 8a4 4 0 0 1 0 10z" />
+      <path d="M12 10v3M12 15.5v.01" />
+    </Svg>
+  );
+}
+
+/** 업로드 자리 — 사진 틀 */
+export function ImageIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="1" />
+      <path d="M3 16l5-5 4 4 3-3 6 6" />
+    </Svg>
+  );
+}
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Svg>
+  );
+}
+
+/** 등급이 막은 입력(동영상·레퍼런스 이미지) */
+export function LockIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="5" y="11" width="14" height="10" rx="1.5" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </Svg>
+  );
+}
+
+/** 국세청 인증 완료 배지 — 방패 + 체크 */
+export function ShieldCheckIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" />
+      <path d="M9 12l2 2 4-4" />
+    </Svg>
+  );
+}
+
+/** 인증 통과 — 동그라미 체크 */
+export function CheckCircleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 12.2l2.8 2.8L16 9.5" />
+    </Svg>
   );
 }
