@@ -457,7 +457,7 @@ export type AdminCompanyFlagsRequest = Partial<{
   spotlight: boolean;
 }>;
 
-/** GET /api/v1/admin/companies/{id}/subscription — 소유자용과 달리 한도(limits)가 없고 감사 시각이 붙는다 */
+/** GET /api/v1/admin/companies/{id}/subscription — 소유자용 구독 응답 + 감사 시각 */
 export type AdminCompanySubscriptionResponse = {
   companyId: number;
   companyName: string;
@@ -468,6 +468,8 @@ export type AdminCompanySubscriptionResponse = {
   expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** effectiveGrade 의 입력 한도. 한도는 행위자가 아니라 회사 구독이 정해 관리자 수정도 같은 한도에 걸린다 */
+  limits: GradeLimits;
 };
 
 /** GET /api/v1/companies/{id}/subscription — 소유자 전용 */

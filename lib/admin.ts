@@ -2,6 +2,7 @@
 // 소유자 경로(lib/companies.ts)와 이름이 겹치는 동작도 경로가 달라(/admin/...) 소유 여부와 무관하게 모든 회사에 쓴다.
 
 import { api } from "@/lib/api";
+import type { SaveApi } from "@/lib/companyEdit";
 import type {
   AdminCompanyFlagsRequest,
   AdminCompanyQuery,
@@ -9,6 +10,7 @@ import type {
   AdminCompanySummary,
   CompanyCreateRequest,
   CompanyDetailResponse,
+  CompanyUpdateRequest,
   CompanyVisibility,
   IdResponse,
   PageResponse,
@@ -46,6 +48,23 @@ export function changeAdminFlags(id: number, flags: AdminCompanyFlagsRequest) {
 export function changeAdminVisibility(id: number, visibility: CompanyVisibility) {
   return api.patch<void>(`/admin/companies/${id}/visibility`, { visibility });
 }
+
+/** 본체 부분 수정 — 소유자 PATCH 와 같은 본문(sparse, "" = 비우기). 국세청 인증 회사의 대표자명·개업일자는 관리자도 못 바꾼다. */
+export function updateAdminCompany(id: number, patch: CompanyUpdateRequest) {
+  return api.patch<void>(`/admin/companies/${id}`, patch);
+}
+
+/** 컬렉션 전체 교체 — 경로 끝 이름은 소유자 경로와 같다(lib/companies 의 COLLECTION_FIELD). */
+export function replaceAdminCollection(id: number, name: string, items: unknown[]) {
+  return api.put<void>(`/admin/companies/${id}/${name}`, items);
+}
+
+/** 관리자 수정 화면의 저장 경로 */
+export const ADMIN_SAVE_API: SaveApi = {
+  update: updateAdminCompany,
+  replace: replaceAdminCollection,
+  visibility: changeAdminVisibility,
+};
 
 /** 소프트 삭제. 복구(restoreAdminCompany)로 되살린다. */
 export function deleteAdminCompany(id: number) {

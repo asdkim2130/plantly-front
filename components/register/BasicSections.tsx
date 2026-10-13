@@ -30,7 +30,7 @@ import {
 import { formatBytes } from "@/lib/meta";
 import type { PricingType, TrlLevel } from "@/types/api";
 
-export function BasicInfoSection({ form, update, errors, masters, identity = false }: SectionProps) {
+export function BasicInfoSection({ form, update, errors, masters, identity }: SectionProps) {
   const max = (field: string) => ruleValue(masters.constraints, field, "maxLength");
   return (
     <Section id={sectionId("A")} letter="A" title="기본 정보" sub={identity ? "기업명 · 대표자명 필수" : "기업명 필수"}>
@@ -44,7 +44,9 @@ export function BasicInfoSection({ form, update, errors, masters, identity = fal
         placeholder="사업자등록증의 상호 또는 대외 브랜드명"
         error={errors.companyName}
       />
-      {identity && <IdentityFields form={form} update={update} errors={errors} max={max} />}
+      {identity && (
+        <IdentityFields form={form} update={update} errors={errors} max={max} withBusinessNumber={identity === "create"} />
+      )}
       <TextField
         id="f-introTitle"
         label="한 줄 요약"
@@ -79,28 +81,36 @@ export function BasicInfoSection({ form, update, errors, masters, identity = fal
 }
 
 /**
- * 관리자 등록의 신원 3종. 자가등록에서는 국세청 인증본이 채워 칸이 없다.
- * 국세청에 확인하지 않은 값이라 그 사실을 칸 아래에 적는다 — 이 회사는 "국세청 미인증"으로 만들어진다.
+ * 관리자 화면의 신원 칸. 자가등록·소유자 수정에서는 국세청 인증본이 채워 칸이 없다.
+ * 국세청에 확인하지 않은 값이라 그 사실을 칸 아래에 적는다.
+ *  - 등록: 사업자번호 · 대표자명 · 개업일자 — 이 회사는 "국세청 미인증"으로 만들어진다.
+ *  - 수정(미인증 회사만): 대표자명 · 개업일자. 사업자번호는 수정 API 에 없다(등록 시점 값이 유일한 출처).
  */
 function IdentityFields({
   form,
   update,
   errors,
   max,
-}: Pick<SectionProps, "form" | "update" | "errors"> & { max: (field: string) => number | undefined }) {
+  withBusinessNumber,
+}: Pick<SectionProps, "form" | "update" | "errors"> & {
+  max: (field: string) => number | undefined;
+  withBusinessNumber: boolean;
+}) {
   return (
     <>
       <div className="grid gap-3.5 sm:grid-cols-2">
-        <TextField
-          id="f-businessNumber"
-          label="사업자등록번호"
-          value={form.businessNumber}
-          onChange={(businessNumber) => update({ businessNumber })}
-          max={12}
-          placeholder="123-45-67890 (모르면 비워 두기)"
-          error={errors.businessNumber}
-          inputClassName="font-heading tracking-[0.04em]"
-        />
+        {withBusinessNumber && (
+          <TextField
+            id="f-businessNumber"
+            label="사업자등록번호"
+            value={form.businessNumber}
+            onChange={(businessNumber) => update({ businessNumber })}
+            max={12}
+            placeholder="123-45-67890 (모르면 비워 두기)"
+            error={errors.businessNumber}
+            inputClassName="font-heading tracking-[0.04em]"
+          />
+        )}
         <TextField
           id="f-ceoName"
           label="대표자명"
@@ -125,8 +135,9 @@ function IdentityFields({
         <ErrorLine message={errors.establishmentDate} />
       </div>
       <p className="fhint -mt-1">
-        국세청 확인 없이 입력한 값 그대로 저장됩니다. 이 기업은 &lsquo;국세청 미인증&rsquo;으로 등록되며, 같은 사업자등록번호로
-        이미 등록된 기업이 있으면 발행이 막힙니다.
+        {withBusinessNumber
+          ? "국세청 확인 없이 입력한 값 그대로 저장됩니다. 이 기업은 ‘국세청 미인증’으로 등록되며, 같은 사업자등록번호로 이미 등록된 기업이 있으면 발행이 막힙니다."
+          : "국세청 미인증 기업이라 대표자명·개업일자를 직접 고칠 수 있습니다. 국세청 확인 없이 입력한 값 그대로 저장됩니다."}
       </p>
     </>
   );

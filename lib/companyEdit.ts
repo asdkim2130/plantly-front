@@ -11,6 +11,7 @@
  */
 
 import { COLLECTION_FIELD, changeVisibility, replaceCollection, updateCompany, type CollectionName } from "@/lib/companies";
+import type { CompanyVisibility } from "@/types/api";
 import {
   emptyForm,
   toPayload,
@@ -31,6 +32,9 @@ export function fromDetail(detail: CompanyDetailResponse): RegisterForm {
   return {
     ...emptyForm(),
     companyName: profile.companyName,
+    // 신원 두 칸은 관리자 수정(미인증 회사)에서만 고친다. 소유자 화면은 칸을 그리지 않아 늘 저장값 그대로다.
+    ceoName: profile.ceoName,
+    establishmentDate: text(profile.establishmentDate),
     introTitle: text(profile.introTitle),
     content: text(profile.content),
     website: text(profile.website),
@@ -80,7 +84,7 @@ export function fromDetail(detail: CompanyDetailResponse): RegisterForm {
 
 /** 섹션이 들고 있는 폼 칸. 이 칸들이 저장값과 다르면 그 섹션은 "저장 안 됨" 이다. */
 export const SECTION_FIELDS: Record<SectionKey, (keyof RegisterForm)[]> = {
-  A: ["companyName", "introTitle", "content", "website"],
+  A: ["companyName", "ceoName", "establishmentDate", "introTitle", "content", "website"],
   B: ["postalCode", "roadAddress", "jibunAddress", "detailAddress"],
   C: ["logoUrl", "coverImageUrl", "brandColor"],
   D: ["trlLevel", "pricingType", "leadTime", "asInfo", "videoUrl"],
@@ -99,6 +103,21 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 export function changedFields(form: RegisterForm, saved: RegisterForm, key: SectionKey) {
   return SECTION_FIELDS[key].filter((field) => !same(form[field], saved[field]));
 }
+
+/**
+ * 저장 요청을 보낼 곳. 소유자 수정과 관리자 수정은 본문이 같고 경로만 다르다(`/companies/…` vs `/admin/companies/…`).
+ */
+export type SaveApi = {
+  update: (id: number, patch: CompanyUpdateRequest) => Promise<void>;
+  replace: (id: number, name: CollectionName, items: unknown[]) => Promise<void>;
+  visibility: (id: number, visibility: CompanyVisibility) => Promise<void>;
+};
+
+export const OWNER_SAVE_API: SaveApi = {
+  update: updateCompany,
+  replace: replaceCollection,
+  visibility: changeVisibility,
+};
 
 /** 요청 하나. 성공하면 `fields` 를 저장값으로 옮긴다. `collection` 은 검증 오류 경로를 되짓는 데 쓴다 */
 export type SaveOp = {
@@ -144,6 +163,7 @@ export function buildSaveOps(
   form: RegisterForm,
   saved: RegisterForm,
   etcId: number | null,
+  api: SaveApi = OWNER_SAVE_API,
 ): SaveOp[] {
   const changed = changedFields(form, saved, key);
   if (changed.length === 0) return [];
@@ -151,7 +171,7 @@ export function buildSaveOps(
   const payload = toPayload(form, 0, etcId);
 
   if (key === "K") {
-    return [{ fields: ["visibility"], run: () => changeVisibility(companyId, form.visibility) }];
+    return [{ fields: ["visibility"], run: () => api.visibility(companyId, form.visibility) }];
   }
 
   const scalarFields = changed.filter((field) => SCALARS.has(field));
@@ -159,6 +179,16 @@ export function buildSaveOps(
   if (scalarFields.length) {
     const patch: Record<string, unknown> = {};
     for (const field of scalarFields) {
+      // 신원 두 칸은 등록 본문(toPayload)에 없어 폼에서 직접 읽는다. 개업일자는 날짜라 비우기를 지원하지 않는다 —
+      // 비운 채로는 화면 검증이 저장을 막는다(validate 의 requireDate).
+      if (field === "ceoName") {
+        patch.ceoName = form.ceoName.trim();
+        continue;
+      }
+      if (field === "establishmentDate") {
+        if (form.establishmentDate) patch.establishmentDate = form.establishmentDate;
+        continue;
+      }
       const value = payload[field as keyof typeof payload];
       if (field === "trlLevel" || field === "pricingType") {
         if (value !== null) patch[field] = value;
@@ -166,7 +196,7 @@ export function buildSaveOps(
         patch[field] = value ?? "";
       }
     }
-    ops.push({ fields: scalarFields, run: () => updateCompany(companyId, patch as CompanyUpdateRequest) });
+    ops.push({ fields: scalarFields, run: () => api.update(companyId, patch as CompanyUpdateRequest) });
   }
 
   const collections = new Set(changed.map((field) => COLLECTION_OF[field]).filter((name) => name !== undefined));
@@ -175,7 +205,7 @@ export function buildSaveOps(
       (field) => COLLECTION_OF[field] === name,
     );
     const body = payload[COLLECTION_FIELD[name]] ?? [];
-    ops.push({ fields, collection: name, run: () => replaceCollection(companyId, name, body) });
+    ops.push({ fields, collection: name, run: () => api.replace(companyId, name, body) });
   }
   return ops;
 }

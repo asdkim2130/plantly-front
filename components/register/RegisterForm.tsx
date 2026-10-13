@@ -420,7 +420,7 @@ export default function RegisterForm(props: Props) {
     limits,
     grade,
     removed,
-    identity: admin,
+    identity: admin ? "create" : undefined,
   };
   const removedBySection = (key: SectionKey) => removedLeft.filter((item) => item.section === key).length;
 
