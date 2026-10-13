@@ -1729,6 +1729,58 @@
     color: color-mix(in srgb, var(--color-ink) 38%, transparent);
   }
 
+  /* 켬/끔 스위치(관리자 카드의 추천 노출 · 스팟라이트 고정). button[role=switch] 에 붙이고 aria-checked 로 상태를 그린다. */
+  .swt {
+    position: relative;
+    z-index: 1; /* 카드 전체를 덮는 링크 덮개 위로 올린다 */
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--color-ink);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .swt:disabled {
+    cursor: not-allowed;
+    color: var(--color-faint);
+  }
+  .swt .trk {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    flex: none;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-ink) 22%, transparent);
+    transition: background 0.15s;
+  }
+  .swt .trk::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(11 33 72 / 0.25);
+    transition: transform 0.15s;
+  }
+  .swt[aria-checked="true"] .trk {
+    background: var(--color-brand);
+  }
+  .swt[aria-checked="true"] .trk::after {
+    transform: translateX(14px);
+  }
+  .swt:disabled .trk {
+    opacity: 0.45;
+  }
+  .swt:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
   /* 작성 중인 등록 한 줄 — 점선 테두리로 아직 발행 전임을 보인다 */
   .drow {
     display: flex;

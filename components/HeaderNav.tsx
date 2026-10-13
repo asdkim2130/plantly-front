@@ -70,6 +70,18 @@ export default function HeaderNav() {
         <span aria-hidden className="skel h-[31px] w-[68px] rounded-lg" />
       ) : user ? (
         <div className="flex items-center gap-2.5">
+          {/* 관리자에게만 보인다. 숨기는 건 화면 편의이고, 막는 건 서버다(관리자 API 는 MEMBER 에게 403). */}
+          {user.userRole === "ADMIN" && (
+            <Link
+              href="/admin/companies"
+              aria-current={pathname.startsWith("/admin") ? "page" : undefined}
+              className={`hidden rounded-lg px-2.5 py-1.5 text-sm whitespace-nowrap no-underline sm:inline-flex ${
+                pathname.startsWith("/admin") ? "bg-brand-100 font-medium text-brand" : "text-ink hover:text-brand"
+              }`}
+            >
+              기업 관리
+            </Link>
+          )}
           {/* 좁은 화면에서도 남긴다(아이콘만) — 소유자가 자기 기업으로 돌아오는 유일한 길이다. */}
           <Link
             href="/companies/my"

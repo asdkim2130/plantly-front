@@ -7,14 +7,15 @@ import OwnerCompanyCard from "@/components/OwnerCompanyCard";
 import Pagination from "@/components/Pagination";
 import { useSession } from "@/components/SessionProvider";
 import {
-  CheckIcon,
-  DraftIcon,
-  OfficeIcon,
-  PlusIcon,
-  TrashIcon,
-  WarningIcon,
-} from "@/components/icons";
-import { ApiError } from "@/lib/api";
+  ConfirmDialog,
+  type ConfirmText,
+  ListError,
+  ListSkeleton,
+  ToastView,
+  failMessage,
+  useToast,
+} from "@/components/ManageListParts";
+import { DraftIcon, OfficeIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import { changeVisibility, deleteCompany, deleteDraft, getMyCompanies, listDrafts } from "@/lib/companies";
 import { formatBusinessNumber, relativeTime } from "@/lib/register";
 import type { CompanyDraftSummary, CompanySummary, PageResponse } from "@/types/api";
@@ -25,8 +26,6 @@ type Confirm =
   | { kind: "private"; company: CompanySummary }
   | { kind: "delete"; company: CompanySummary }
   | { kind: "draft"; draft: CompanyDraftSummary };
-
-type Toast = { message: string; ok: boolean };
 
 /**
  * 내 기업 목록(소유자). 정본은 Claude Design 의 **"플랜틀리 내 기업 목록"**.
@@ -53,7 +52,7 @@ export default function MyCompanies() {
 
   const [busy, setBusy] = useState<Record<number, string>>({});
   const [confirm, setConfirm] = useState<Confirm | null>(null);
-  const [toast, setToast] = useState<Toast | null>(null);
+  const [toast, setToast] = useToast();
   const [now] = useState(() => Date.now());
 
   useEffect(() => {
@@ -91,12 +90,6 @@ export default function MyCompanies() {
     );
     return () => controller.abort();
   }, [user, draftsReload]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 2800);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   function goPage(next: number) {
     router.push(next === 1 ? "/companies/my" : `/companies/my?page=${next}`);
@@ -196,16 +189,7 @@ export default function MyCompanies() {
 
       <div className="flex flex-col gap-[30px] px-4 pt-[22px] pb-10 sm:px-[30px]">
         {companiesError ? (
-          <div className="blueprint flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <WarningIcon size={28} className="text-brand-700" />
-            <p className="font-heading text-[22px]">내 기업 목록을 불러오지 못했습니다</p>
-            <p className="max-w-[420px] text-[13px] leading-[1.6] text-muted">
-              일시적인 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.
-            </p>
-            <button type="button" className="btn btn-primary mt-1" onClick={retry}>
-              다시 시도
-            </button>
-          </div>
+          <ListError title="내 기업 목록을 불러오지 못했습니다" onRetry={retry} />
         ) : companies === null ? (
           <ListSkeleton />
         ) : emptyAll ? (
@@ -285,25 +269,13 @@ export default function MyCompanies() {
         )}
       </div>
 
-      {confirm && <ConfirmDialog confirm={confirm} onCancel={() => setConfirm(null)} onConfirm={onConfirm} />}
-
-      {toast && (
-        <div role="status" className="toast">
-          {toast.ok ? (
-            <CheckIcon size={16} strokeWidth={2} className="text-brand-300" />
-          ) : (
-            <WarningIcon size={16} className="text-[#ffb4a8]" />
-          )}
-          <span>{toast.message}</span>
-        </div>
+      {confirm && (
+        <ConfirmDialog text={confirmText(confirm)} onCancel={() => setConfirm(null)} onConfirm={onConfirm} />
       )}
+
+      <ToastView toast={toast} />
     </div>
   );
-}
-
-function failMessage(e: unknown, fallback: string) {
-  // 권한·존재 오류는 서버 문구가 더 정확하다(다른 탭에서 지웠다 등). 그 밖에는 화면 문구로 통일한다.
-  return e instanceof ApiError && (e.isForbidden || e.isNotFound) ? e.message : fallback;
 }
 
 /** 작성 중인 등록 한 줄. 기업 카드와 다른 모양(점선 테두리 + "등록 전")으로 아직 발행 전임을 드러낸다. */
@@ -343,98 +315,27 @@ function DraftRow({ draft, now, onDelete }: { draft: CompanyDraftSummary; now: n
   );
 }
 
-function ConfirmDialog({
-  confirm,
-  onCancel,
-  onConfirm,
-}: {
-  confirm: Confirm;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const text =
-    confirm.kind === "private"
+function confirmText(confirm: Confirm): ConfirmText {
+  return confirm.kind === "private"
+    ? {
+        title: "비공개로 전환할까요?",
+        body: `‘${confirm.company.companyName}’이(가) 검색·메인·즐겨찾기 목록에서 사라집니다. 언제든 다시 공개할 수 있습니다.`,
+        ok: "비공개로 전환",
+        danger: false,
+      }
+    : confirm.kind === "delete"
       ? {
-          title: "비공개로 전환할까요?",
-          body: `‘${confirm.company.companyName}’이(가) 검색·메인·즐겨찾기 목록에서 사라집니다. 언제든 다시 공개할 수 있습니다.`,
-          ok: "비공개로 전환",
-          danger: false,
+          title: `‘${confirm.company.companyName}’을(를) 삭제할까요?`,
+          body: "삭제하면 목록에서 사라지고, 되살리려면 관리자에게 문의해야 합니다.",
+          ok: "삭제",
+          danger: true,
         }
-      : confirm.kind === "delete"
-        ? {
-            title: `‘${confirm.company.companyName}’을(를) 삭제할까요?`,
-            body: "삭제하면 목록에서 사라지고, 되살리려면 관리자에게 문의해야 합니다.",
-            ok: "삭제",
-            danger: true,
-          }
-        : {
-            title: "작성 중인 내용을 삭제할까요?",
-            body: `${confirm.draft.companyName ? `‘${confirm.draft.companyName}’` : "이름 미입력"} (${formatBusinessNumber(
-              confirm.draft.businessNumber,
-            )}) 초안을 삭제합니다. 삭제하면 되돌릴 수 없습니다.`,
-            ok: "삭제",
-            danger: true,
-          };
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] grid place-items-center bg-brand-900/40 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-title"
-      onClick={onCancel}
-      onKeyDown={(e) => e.key === "Escape" && onCancel()}
-    >
-      <div
-        className="blueprint flex w-[420px] max-w-full flex-col gap-2.5 bg-white px-6 pt-6 pb-5 shadow-[0_24px_60px_rgb(11_33_72/0.3)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="confirm-title" className="font-heading text-[22px] leading-[1.25]">
-          {text.title}
-        </h2>
-        <p className="text-sm leading-[1.6] text-muted">{text.body}</p>
-        <div className="mt-2.5 flex justify-end gap-2">
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>
-            취소
-          </button>
-          <button
-            type="button"
-            autoFocus
-            className={`btn ${text.danger ? "border-danger bg-danger text-white hover:bg-danger-ink" : "btn-primary"}`}
-            onClick={onConfirm}
-          >
-            {text.ok}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** 불러오는 동안 카드 세 장 자리. 카드와 같은 치수(커버 150 · 로고 54)로 그려 내용이 들어올 때 튀지 않게 한다. */
-function ListSkeleton() {
-  return (
-    <div className="flex flex-col gap-3" aria-busy>
-      <span className="skel h-4 w-[140px]" />
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="blueprint flex flex-col border-dashed bg-white">
-            <div className="relative h-[150px] rounded-t-xl border-b border-dashed border-line bg-ink/[0.035]">
-              <span className="absolute bottom-[-24px] left-4 size-[54px] rounded-lg border border-dashed border-line bg-white" />
-            </div>
-            <div className="flex flex-col gap-[9px] px-4 pt-[34px] pb-4">
-              <span className="skel h-[15px] w-[46%]" />
-              <span className="skel h-2.5 w-[78%]" />
-              <span className="skel h-2.5 w-[40%]" />
-              <div className="flex gap-[5px]">
-                <span className="skel h-5 w-16" />
-                <span className="skel h-5 w-[52px]" />
-              </div>
-            </div>
-            <div className="kick border-t border-dashed border-line px-4 py-3">불러오는 중</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+      : {
+          title: "작성 중인 내용을 삭제할까요?",
+          body: `${confirm.draft.companyName ? `‘${confirm.draft.companyName}’` : "이름 미입력"} (${formatBusinessNumber(
+            confirm.draft.businessNumber,
+          )}) 초안을 삭제합니다. 삭제하면 되돌릴 수 없습니다.`,
+          ok: "삭제",
+          danger: true,
+        };
 }

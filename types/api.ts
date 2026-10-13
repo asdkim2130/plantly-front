@@ -83,6 +83,8 @@ export type ProfileResponse = {
   nickname: string;
   phone: string;
   userStatus: UserStatus;
+  /** 관리자 메뉴를 보일지 정하는 근거. 접근 제어 자체는 서버가 한다(관리자 API 는 MEMBER 에게 403) */
+  userRole: UserRole;
   createdAt: string; // ISO-8601 LocalDateTime
 };
 
@@ -401,6 +403,71 @@ export type CompanyReverificationResponse = {
   ceoName: string;
   businessStartDate: string;
   verifiedAt: string;
+};
+
+/**
+ * 카드 몸통(CoverCard·TagRow)이 실제로 읽는 필드. 공개·소유자 카드(CompanySummary)와 관리자 카드(AdminCompanySummary)가
+ * 둘 다 들어와야 해서 전체 타입 대신 이 부분집합을 받는다.
+ */
+export type CardCompany = Pick<
+  CompanySummary,
+  "id" | "companyName" | "introTitle" | "logoUrl" | "coverImageUrl" | "address" | "verified" | "categoryNames" | "tagNames"
+>;
+
+// ===== 관리자 =====
+
+/** GET /api/v1/admin/companies — 관리자 목록 카드. 삭제·비공개 회사도 온다(필터로 가른다) */
+export type AdminCompanySummary = CardCompany & {
+  /** 국세청 사업자 확인. verified(에디터 선정)와 다른 축 */
+  businessVerified: boolean;
+  /** 추천 레일 노출. 순수 관리자 큐레이션이라 끄면 바로 레일에서 빠진다 */
+  featured: boolean;
+  /** 스팟라이트 **수동 고정**. 유료 등급 회사는 false 여도 구독만으로 스팟라이트에 오른다 */
+  spotlight: boolean;
+  deleted: boolean;
+  visibility: CompanyVisibility;
+  /** null = 소유자 미연동(관리자 대신등록 등) */
+  ownerUserId: number | null;
+  registrationSource: RegistrationSource;
+  createdAt: string;
+  updatedAt: string;
+  /** 구독이 없으면(있어선 안 되지만) 셋 다 null */
+  effectiveGrade: CompanyGrade | null;
+  status: SubscriptionStatus | null;
+  expiresAt: string | null;
+  industryNames: string[];
+};
+
+/** 관리자 목록 필터. 불리언은 생략 = 상관없음, true/false = 그 값만 */
+export type AdminCompanyQuery = {
+  verified?: boolean;
+  featured?: boolean;
+  spotlight?: boolean;
+  deleted?: boolean;
+  companyName?: string;
+  ownerUserId?: number;
+  page?: number;
+  size?: number;
+};
+
+/** PATCH /api/v1/admin/companies/{id}/flags — 보낸 키만 바뀐다(생략 = 그대로) */
+export type AdminCompanyFlagsRequest = Partial<{
+  verified: boolean;
+  featured: boolean;
+  spotlight: boolean;
+}>;
+
+/** GET /api/v1/admin/companies/{id}/subscription — 소유자용과 달리 한도(limits)가 없고 감사 시각이 붙는다 */
+export type AdminCompanySubscriptionResponse = {
+  companyId: number;
+  companyName: string;
+  grade: CompanyGrade;
+  effectiveGrade: CompanyGrade;
+  status: SubscriptionStatus;
+  startedAt: string;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 /** GET /api/v1/companies/{id}/subscription — 소유자 전용 */

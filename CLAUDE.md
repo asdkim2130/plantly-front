@@ -115,6 +115,16 @@ npm run dev        # http://localhost:3000
 | `DELETE /api/v1/companies/{id}` | 소유자 소프트 삭제(복구는 관리자만) |
 | `PUT /api/v1/companies/{id}/{tags,materials,equipment,images,contacts,references,categories,industries,certifications,countries,regions}` | 컬렉션 **전체 교체** |
 
+**관리자(ADMIN) — MEMBER 가 부르면 403. 화면은 `/users/me` 의 `userRole` 로 메뉴만 가린다**
+
+| 경로 | 설명 |
+| --- | --- |
+| `GET /api/v1/admin/companies` | 목록. 필터 `verified`·`featured`·`spotlight`·`deleted`(생략=상관없음)·`companyName`·`ownerUserId`. 기본은 **삭제·비공개 포함** 전체 |
+| `GET /api/v1/admin/companies/{id}`, `.../subscription` | 상세(소유자 상세와 같은 profile+meta, 삭제 회사도 열림) · 구독(한도 `limits` 없음) |
+| `PATCH /api/v1/admin/companies/{id}/flags` | 에디터 선정·추천·스팟라이트 고정 (sparse, 멱등) |
+| `PATCH .../visibility`, `DELETE /api/v1/admin/companies/{id}`, `POST .../restore` | 공개 전환 · 삭제 · 복구 |
+| `POST /api/v1/admin/companies` | 관리자 등록(국세청 인증 없음, 사업자번호·대표자 직접 입력) — 화면 아직 없음 |
+
 ## 프론트가 틀리기 쉬운 도메인 규칙
 
 - **등급 표시는 `effectiveGrade`.** `grade` 는 계약값이고, 만료·체험을 반영한 실제 등급은 서버가 파생해 내려준다.
@@ -344,6 +354,12 @@ lib/register.ts          등록 폼 상태 모델 — 폼↔요청 변환, 화�
 lib/postcode.ts          주소 검색(카카오 우편번호 팝업). 쓸 기색이 보일 때 스크립트를 받는다
 app/companies/new/page.tsx  기업정보 등록 — 인증 → 작성 → 완료 세 단계 (아래 "기업정보 등록 화면")
 app/companies/[id]/edit/page.tsx  기업정보 수정(소유자) — 섹션별 저장 (아래 "기업정보 수정 화면")
+app/admin/companies/page.tsx  관리자 기업 목록 — 필터·검색 + 추천/스팟라이트 스위치 (아래 "관리자 기업 목록 화면")
+app/admin/companies/[id]/page.tsx  관리자 기업 상세 — 상세 몸통 + 운영 정보
+components/AdminCompanies.tsx  관리자 목록 본문 / components/AdminCompanyCard.tsx  관리자 카드(CoverCard 자리 교체)
+components/ManageListParts.tsx  내 기업·관리자 목록이 함께 쓰는 확인 창·자리표시·알림·실패 문구
+components/GradeLabel.tsx  등급 한 줄(effectiveGrade + 체험/만료/면제). 소유자·관리자 상세가 쓴다
+lib/admin.ts             관리자 회사 API
 app/companies/my/page.tsx  내 기업 목록(소유자) — 작성 중인 등록 + 등록한 기업 (아래 "내 기업 목록 화면")
 components/MyCompanies.tsx  내 기업 목록 본문(page.tsx 는 Suspense 껍데기)
 lib/companyEdit.ts       수정 모델 — 소유자 상세→폼, 섹션별 변경 판정, 섹션 저장 요청 조립
@@ -805,3 +821,34 @@ Claude Design 으로 넘길 핸드오프 문서는 `docs/design/company-list.md`
 
 - 꺼진 항목의 회색 표시는 표본이 없어 화면으로 보지 못했다(위 참고). 나머지는 브라우저에서 확인했다.
 - 공개/비공개 전환·삭제는 이 화면에 없다(내 기업 목록의 ⋯ 메뉴). 필요해지면 히어로 버튼 줄에 붙인다.
+
+## 관리자 기업 목록 화면 (`/admin/companies`)
+
+별도 디자인이 없다 — **내 기업 목록과 같은 구성**(머리 · 카드 격자 · 페이지)에 관리자용 요소만 바꿨다. 헤더 "기업 관리"는
+`userRole === "ADMIN"` 일 때만 보인다(막는 건 서버다).
+
+- **작성 중인 등록 영역이 없다.** 초안은 "그 사용자가 국세청 인증을 받은 사업자번호"에만 저장되는데(`CompanyDraftService`),
+  관리자 등록은 국세청 인증 없이 사업자번호를 직접 넣는 경로라 초안을 둘 수 없다. 필요해지면 백엔드에 관리자 초안 API 부터.
+- **"새 기업 등록" 은 비활성("준비 중")이다.** 관리자 등록 화면이 아직 없다. 소유자 등록(`/companies/new`)으로 보내지 않는
+  이유: 그 길은 국세청 인증을 거치고 누른 사람을 소유자로 만든다. 화면이 생기면 `/admin/companies/new` 링크로 바꾼다.
+- **필터 칩(전체 · 추천 노출 · 스팟라이트 고정 · 삭제됨) + 회사명 검색.** 조건은 주소에 싣는다(`?f=&q=&page=`).
+  "전체" 는 삭제된 기업까지 포함한다(서버 기본값) — 카드에 "삭제됨" 배지가 붙는다.
+- **카드 아랫단의 추천 노출 · 스팟라이트 고정 스위치**가 클라이언트 요구사항이다. 누르면 확인 없이 바로 보낸다(`PATCH .../flags`).
+  - 추천은 순수 관리자 큐레이션이라 끄면 메인 추천 레일에서 바로 빠진다.
+  - **스팟라이트는 "수동 고정"이다.** 유료 활성 구독(PREMIUM·ENTERPRISE, ACTIVE)은 꺼져 있어도 요금제로 레일에 오른다.
+    그런 카드에는 스위치 옆에 "요금제로 노출"을 붙인다(판정은 백엔드 `ShowcaseCardRepository` 와 맞춘 표시용 사본).
+  - 필터가 걸린 채 스위치를 꺼도 카드는 다시 받기 전까지 그 자리에 남는다(눈앞에서 사라지면 되돌리기 어렵다).
+  - 삭제된 기업은 스위치가 잠긴다.
+- "⋯" 메뉴: 공개 페이지 보기(공개이고 삭제되지 않았을 때만) · 공개/비공개 전환 · 삭제, 삭제된 기업은 **복구**.
+- 카드 클릭 → 관리자 상세(`/admin/companies/{id}`). **"수정"은 없다** — 소유자 수정 화면은 소유자 API 라 관리자에게 403 이고,
+  관리자 수정 화면은 아직 없다.
+
+### 관리자 기업 상세 (`/admin/companies/[id]`)
+
+소유자 상세와 같은 몸통(`CompanyDetailView`)과 같은 응답 모양. 삭제된 회사도 열린다. 히어로 위 띠에 삭제됨 · 공개 상태 ·
+등록 출처 · 소유자 연동, 사이드바 "운영 정보"에 사업자번호 · 국세청 인증 · 등급 · 구독 시작. 관리자 구독 응답에는 한도가 없어
+소유자 상세의 "등급 한도" 줄이 없다. 추천·스팟라이트 스위치는 목록에만 있다.
+
+### 아직 안 한 것
+
+- 관리자 등록 화면(`/admin/companies/new`), 관리자 수정 화면, 관리자 임시저장(백엔드부터).
