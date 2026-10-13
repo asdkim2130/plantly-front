@@ -9,6 +9,13 @@
  * - 등급 한도는 구독 조회의 `limits`(실제 유효 등급 기준)에서 온다. 숨겨진 항목(active=false)은 회색으로 그리고,
  *   그 컬렉션을 저장하면 서버가 전부 새로 만들어 다시 공개되므로 표시를 지운다.
  * - 대표자명·개업일자는 국세청 인증 회사면 일반 수정이 막혀 있어 남색 띠에 읽기 전용으로 두고 "재인증"으로만 바꾼다.
+ *
+ * ── 관리자 수정(`admin`) ──
+ * 같은 폼을 `/admin/companies/[id]/edit` 가 쓴다. 본문은 같고 저장 경로만 `/admin/companies/…` 다(ADMIN_SAVE_API).
+ *  - 등급 한도는 관리자에게도 똑같이 걸린다 — 한도는 행위자가 아니라 회사 구독이 정한다(관리자 구독 응답의 limits).
+ *  - 재인증은 없다(소유자가 국세청에 다시 확인받는 길이다). 대신 **국세청 미인증 회사**는 대표자명·개업일자를
+ *    기본 정보 섹션에서 직접 고친다 — 관리자 등록 회사가 전부 여기에 해당한다. 인증 회사는 관리자도 못 바꾼다
+ *    (서버 가드 VERIFIED_FIELD_NOT_EDITABLE — 인증을 회수해야 열린다).
  */
 
 import Link from "next/link";
@@ -33,6 +40,7 @@ import {
 } from "@/components/register/OtherSections";
 import { ErrorLine, FieldHead, SectionFooterContext } from "@/components/register/parts";
 import { ApiError } from "@/lib/api";
+import { ADMIN_SAVE_API } from "@/lib/admin";
 import { buildSaveOps, changedFields, qualifyField, SECTION_FIELDS } from "@/lib/companyEdit";
 import { reverifyCompany } from "@/lib/companies";
 import { subscribeUploads, uploadsInFlight } from "@/lib/meta";
@@ -61,14 +69,21 @@ type Props = {
   companyId: number;
   detail: CompanyDetailResponse;
   initialForm: Form;
-  subscription: CompanySubscriptionResponse;
+  /** 소유자용·관리자용 구독 응답이 둘 다 이 세 값을 갖는다 */
+  subscription: Pick<CompanySubscriptionResponse, "effectiveGrade" | "status" | "limits">;
   masters: RegisterMasters;
+  /** 관리자 수정(파일 머리 주석) */
+  admin?: boolean;
 };
 
-export default function EditForm({ companyId, detail, initialForm, subscription, masters }: Props) {
+export default function EditForm({ companyId, detail, initialForm, subscription, masters, admin = false }: Props) {
   const router = useRouter();
   const etcId = findEtcCertificationId(masters.certifications);
   const limits = subscription.limits;
+  const saveApi = admin ? ADMIN_SAVE_API : undefined;
+  const editPath = admin ? `/admin/companies/${companyId}/edit` : `/companies/${companyId}/edit`;
+  // 관리자가 국세청 미인증 회사의 대표자명·개업일자를 기본 정보 섹션에서 직접 고치는가
+  const identityEditable = admin && !detail.meta.businessVerified;
 
   const [form, setForm] = useState<Form>(initialForm);
   /** 서버에 저장돼 있는 값. 섹션 저장이 성공할 때마다 그 칸만 옮겨 온다 */
@@ -108,14 +123,21 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
   const [savingKey, setSavingKey] = useState<SectionKey | null>(null);
   const uploading = useSyncExternalStore(subscribeUploads, uploadsInFlight, () => 0);
 
+  // 수정은 날짜 비우기를 지원하지 않는다 — 저장값이 있으면 비운 채 저장을 막는다.
+  const requireDate = identityEditable && saved.establishmentDate !== "";
+  const check = useCallback(
+    (value: Form) => validate(value, identityEditable, requireDate),
+    [identityEditable, requireDate],
+  );
+
   const errors = useMemo(() => {
-    const local = validate(form).filter((error) => attempted.has(error.section));
+    const local = check(form).filter((error) => attempted.has(error.section));
     const extra = serverErrors
       .filter(({ error, snapshot }) => formKeyOf(error.key).every((key, i) => form[key] === snapshot[i]))
       .map(({ error }) => error)
       .filter((s) => !local.some((l) => l.key === s.key));
     return sortErrors([...local, ...extra]);
-  }, [form, attempted, serverErrors]);
+  }, [form, attempted, serverErrors, check]);
   const fieldErrors = useMemo(() => errorMap(errors), [errors]);
 
   // 저장 안 된 섹션이 있으면 창을 닫을 때 브라우저가 한 번 묻는다.
@@ -138,7 +160,7 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
   async function saveSection(key: SectionKey) {
     if (savingKey) return;
     setAttempted((set) => new Set(set).add(key));
-    const local = validate(form).filter((error) => error.section === key);
+    const local = check(form).filter((error) => error.section === key);
     // 칸 오류는 꼬리 줄이 남은 개수를 세어 보여 준다(고치는 대로 줄어든다) — 따로 소식을 남기지 않는다.
     if (local.length) return;
     if (uploading > 0 && (key === "C" || key === "H" || key === "J")) {
@@ -148,7 +170,7 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
 
     // 누른 순간의 값으로 보낸다. 저장 중에 더 고친 칸은 저장값과 달라 그대로 "저장 안 됨"으로 남는다.
     const snapshot = form;
-    const ops = buildSaveOps(companyId, key, snapshot, saved, etcId);
+    const ops = buildSaveOps(companyId, key, snapshot, saved, etcId, saveApi);
     setSavingKey(key);
     setNotice(key, null);
     setServerErrors((list) => list.filter(({ error }) => error.section !== key));
@@ -162,7 +184,7 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
       } catch (e) {
         setSavingKey(null);
         if (e instanceof ApiError && e.isUnauthorized) {
-          router.replace(`/login?next=${encodeURIComponent(`/companies/${companyId}/edit`)}`);
+          router.replace(`/login?next=${encodeURIComponent(editPath)}`);
           return;
         }
         if (e instanceof ApiError && e.errors.length) {
@@ -285,17 +307,25 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
     removed: {},
     mode: "edit",
     hidden,
+    identity: identityEditable ? "edit" : undefined,
   };
   const isPublic = saved.visibility === "PUBLIC";
+  // 공개 상세는 공개이고 삭제되지 않았을 때만 있다(관리자는 삭제된 회사도 고칠 수 있다).
+  const hasPublicPage = isPublic && !detail.meta.deleted;
+  // 남색 띠에 보이는 신원 — 관리자가 고칠 수 있으면 저장값을, 아니면 재인증 결과까지 반영한 값을 보인다.
+  const shownCeo = identityEditable ? saved.ceoName : identity.ceoName;
+  const shownDate = identityEditable ? saved.establishmentDate || null : identity.startDate;
 
   return (
     <div>
       <div className="sticky top-0 z-20 bg-white shadow-[0_1px_0_var(--color-line)]">
         <div className="flex flex-wrap items-center gap-3.5 px-4 py-3 sm:px-[30px]">
           <div className="mr-auto flex min-w-0 flex-col gap-0.5">
-            <div className="kick text-[11px] text-brand-700">Company Profile · Edit</div>
+            <div className="kick text-[11px] text-brand-700">
+              {admin ? "Admin · Company Profile · Edit" : "Company Profile · Edit"}
+            </div>
             <h1 className="truncate text-[22px] leading-[1.1]">
-              기업정보 수정 <span className="text-muted">· {saved.companyName}</span>
+              {admin ? "기업정보 수정 (관리자)" : "기업정보 수정"} <span className="text-muted">· {saved.companyName}</span>
             </h1>
           </div>
           <span className="text-[13px] text-muted" role="status">
@@ -303,12 +333,19 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
               ? `저장하지 않은 섹션 ${dirtySections.length}개`
               : "모든 변경이 저장되었습니다"}
           </span>
-          {isPublic ? (
+          {admin && (
+            <Link href={`/admin/companies/${companyId}`} className="btn btn-ghost">
+              관리자 상세
+            </Link>
+          )}
+          {hasPublicPage ? (
             <Link href={`/companies/${companyId}`} className="btn btn-secondary">
               공개 페이지 보기
             </Link>
           ) : (
-            <span className="text-xs text-faint">비공개 상태라 공개 페이지가 없습니다</span>
+            <span className="text-xs text-faint">
+              {detail.meta.deleted ? "삭제된 기업이라 공개 페이지가 없습니다" : "비공개 상태라 공개 페이지가 없습니다"}
+            </span>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-x-[26px] gap-y-2 bg-brand-900 px-4 py-[11px] sm:px-[30px]">
@@ -322,12 +359,12 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
           )}
           <div className="ro">
             <span className="k">대표자</span>
-            <span className="v">{identity.ceoName}</span>
+            <span className="v">{shownCeo}</span>
           </div>
-          {identity.startDate && (
+          {shownDate && (
             <div className="ro">
               <span className="k">개업일자</span>
-              <span className="v font-heading text-[15px] tracking-[0.04em]">{identity.startDate.replaceAll("-", ".")}</span>
+              <span className="v font-heading text-[15px] tracking-[0.04em]">{shownDate.replaceAll("-", ".")}</span>
             </div>
           )}
           {detail.meta.businessVerified && (
@@ -336,18 +373,24 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
                 <ShieldCheckIcon size={13} strokeWidth={1.8} className="text-brand-300" />
                 국세청 인증 완료
               </span>
-              <button
-                type="button"
-                className="btn btn-ghost px-2 py-1 text-xs text-white"
-                onClick={() => setReverifyOpen(true)}
-              >
-                대표자·개업일자 변경(재인증)
-              </button>
+              {admin ? (
+                <span className="text-xs text-white/60">대표자·개업일자는 인증을 회수해야 바꿀 수 있습니다</span>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-ghost px-2 py-1 text-xs text-white"
+                  onClick={() => setReverifyOpen(true)}
+                >
+                  대표자·개업일자 변경(재인증)
+                </button>
+              )}
             </>
           )}
+          {identityEditable && <span className="text-xs text-white/60">국세청 미인증 · 신원은 기본 정보에서 고칩니다</span>}
           <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
             <span className="tag bg-brand font-heading text-xs tracking-[0.08em] text-white">
               {subscription.effectiveGrade}
+              {subscription.status === "ADMIN_EXEMPT" && " · 한도 면제"}
             </span>
             <span className="text-xs text-white/70">
               카테고리 {limits.maxCategories} · 상세 이미지 {limits.maxDetailImages}장 · 레퍼런스 이미지{" "}
@@ -419,7 +462,7 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
             <span className="text-[11px] text-faint">저장 전 내용 포함</span>
           </div>
           <PreviewCard form={form} masters={masters} />
-          <SearchCoverage form={form} ceoName={identity.ceoName} />
+          <SearchCoverage form={form} ceoName={identityEditable ? form.ceoName : identity.ceoName} />
         </aside>
       </div>
 

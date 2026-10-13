@@ -120,9 +120,10 @@ npm run dev        # http://localhost:3000
 | 경로 | 설명 |
 | --- | --- |
 | `GET /api/v1/admin/companies` | 목록. 필터 `verified`·`featured`·`spotlight`·`deleted`(생략=상관없음)·`companyName`·`ownerUserId`. 기본은 **삭제·비공개 포함** 전체 |
-| `GET /api/v1/admin/companies/{id}`, `.../subscription` | 상세(소유자 상세와 같은 profile+meta, 삭제 회사도 열림) · 구독(한도 `limits` 없음) |
+| `GET /api/v1/admin/companies/{id}`, `.../subscription` | 상세(소유자 상세와 같은 profile+meta, 삭제 회사도 열림) · 구독(소유자용과 같은 `limits` + 감사 시각) |
 | `PATCH /api/v1/admin/companies/{id}/flags` | 에디터 선정·추천·스팟라이트 고정 (sparse, 멱등) |
 | `PATCH .../visibility`, `DELETE /api/v1/admin/companies/{id}`, `POST .../restore` | 공개 전환 · 삭제 · 복구 |
+| `PATCH /api/v1/admin/companies/{id}`, `PUT .../{tags,…,regions}` | 관리자 수정 — 소유자 수정과 같은 본문. 등급 한도·인증 회사 신원 가드도 같다 |
 | `POST /api/v1/admin/companies` | 관리자 등록(국세청 인증 없음, 사업자번호·대표자·개업일자 직접 입력). 소유자 미연동 · 구독 ADMIN_EXEMPT |
 
 ## 프론트가 틀리기 쉬운 도메인 규칙
@@ -354,6 +355,7 @@ lib/register.ts          등록 폼 상태 모델 — 폼↔요청 변환, 화�
 lib/postcode.ts          주소 검색(카카오 우편번호 팝업). 쓸 기색이 보일 때 스크립트를 받는다
 app/companies/new/page.tsx  기업정보 등록 — 인증 → 작성 → 완료 세 단계 (아래 "기업정보 등록 화면")
 app/companies/[id]/edit/page.tsx  기업정보 수정(소유자) — 섹션별 저장 (아래 "기업정보 수정 화면")
+app/admin/companies/[id]/edit/page.tsx  기업정보 수정(관리자) — 같은 EditForm 을 admin 으로 (아래 "관리자 기업 수정 화면")
 app/admin/companies/page.tsx  관리자 기업 목록 — 필터·검색 + 추천/스팟라이트 스위치 (아래 "관리자 기업 목록 화면")
 app/admin/companies/new/page.tsx  관리자 기업 등록 — 자가등록 작성 폼(RegisterForm kind="admin") + 완료 (아래 "관리자 기업 등록 화면")
 app/admin/companies/[id]/page.tsx  관리자 기업 상세 — 상세 몸통 + 운영 정보
@@ -840,19 +842,19 @@ Claude Design 으로 넘길 핸드오프 문서는 `docs/design/company-list.md`
     그런 카드에는 스위치 옆에 "요금제로 노출"을 붙인다(판정은 백엔드 `ShowcaseCardRepository` 와 맞춘 표시용 사본).
   - 필터가 걸린 채 스위치를 꺼도 카드는 다시 받기 전까지 그 자리에 남는다(눈앞에서 사라지면 되돌리기 어렵다).
   - 삭제된 기업은 스위치가 잠긴다.
-- "⋯" 메뉴: 공개 페이지 보기(공개이고 삭제되지 않았을 때만) · 공개/비공개 전환 · 삭제, 삭제된 기업은 **복구**.
-- 카드 클릭 → 관리자 상세(`/admin/companies/{id}`). **"수정"은 없다** — 소유자 수정 화면은 소유자 API 라 관리자에게 403 이고,
-  관리자 수정 화면은 아직 없다.
+- "⋯" 메뉴: **수정**(관리자 수정) · 공개 페이지 보기(공개이고 삭제되지 않았을 때만) · 공개/비공개 전환 · 삭제, 삭제된 기업은 **복구**.
+  수정을 내 기업 카드처럼 아랫단으로 꺼내지 않은 건 그 자리가 스위치 줄이라서다.
+- 카드 클릭 → 관리자 상세(`/admin/companies/{id}`). 소유자 상세·수정은 소유자 API 라 관리자에게 403 이다.
 
 ### 관리자 기업 상세 (`/admin/companies/[id]`)
 
 소유자 상세와 같은 몸통(`CompanyDetailView`)과 같은 응답 모양. 삭제된 회사도 열린다. 히어로 위 띠에 삭제됨 · 공개 상태 ·
-등록 출처 · 소유자 연동, 사이드바 "운영 정보"에 사업자번호 · 국세청 인증 · 등급 · 구독 시작. 관리자 구독 응답에는 한도가 없어
-소유자 상세의 "등급 한도" 줄이 없다. 추천·스팟라이트 스위치는 목록에만 있다.
+등록 출처 · 소유자 연동, 사이드바 "운영 정보"에 사업자번호 · 국세청 인증 · 등급 · 구독 시작. 히어로의 첫 버튼이
+"기업정보 수정"(관리자 수정)이다. 추천·스팟라이트 스위치는 목록에만 있다.
 
 ### 아직 안 한 것
 
-- 관리자 수정 화면, 관리자 임시저장(백엔드부터).
+- 관리자 임시저장(백엔드부터).
 
 ## 관리자 기업 등록 화면 (`/admin/companies/new`)
 
@@ -871,3 +873,18 @@ Claude Design 으로 넘길 핸드오프 문서는 `docs/design/company-list.md`
 - 만들어진 회사는 **소유자 미연동 · 국세청 미인증 · 구독 ADMIN_EXEMPT** 다. 신원 칸 아래에 "국세청 확인 없이 저장된다"고 적었다.
 - 서버 검증 실패의 `businessNumber`·`ceoName`·`establishmentDate` 는 기본 정보 섹션 칸 아래로 붙는다(FIELD_LABEL).
 
+## 관리자 기업 수정 화면 (`/admin/companies/[id]/edit`)
+
+소유자 수정과 **같은 `EditForm`** 을 `admin` 으로 쓴다(섹션별 저장 · 저장 줄 · 오류 표시가 전부 같다). 갈리는 곳:
+
+| 소유자 수정 | 관리자 수정 |
+|---|---|
+| `/private` · `/subscription` · 소유자 PATCH/PUT | 관리자 상세 · 관리자 구독 · `/admin/companies/{id}` PATCH/PUT/visibility(`ADMIN_SAVE_API`) |
+| 등급 한도 = 회사 구독 | **같다.** 한도는 행위자가 아니라 회사 구독이 정해 관리자도 같은 한도에 걸린다(관리자 구독 응답에 `limits` 를 실어 해결) |
+| 인증 회사 대표자·개업일자 → "재인증" 창 | 재인증 없음(소유자가 국세청에 다시 확인받는 길이다). 인증 회사면 "인증을 회수해야 바꿀 수 있다"고만 적는다 — 서버도 같은 가드(`VERIFIED_FIELD_NOT_EDITABLE`) |
+| 미인증 회사 신원은 고칠 길이 없다 | **미인증 회사는 기본 정보 섹션에서 대표자명·개업일자를 직접 고친다**(관리자 등록 회사가 전부 여기). 사업자번호는 수정 API 에 없다 |
+| 공개 페이지 보기(공개일 때) | + 관리자 상세 링크. 삭제된 회사도 열리고, 그때는 공개 페이지가 없다고 적는다 |
+
+- 개업일자는 PATCH 가 날짜 비우기를 지원하지 않아, 저장값이 있으면 비운 채 저장을 막는다(`validate` 의 `requireDate`).
+- 신원 두 칸은 섹션 A 의 저장 대상(`SECTION_FIELDS.A`)에 들어 있지만 소유자 화면은 칸을 그리지 않아 늘 저장값 그대로다.
+- 폼 제약은 `company-create`(컬렉션 상한) + `company-update`(본체 칸) — 소유자 수정이 `my-company-create` 를 쓰는 자리.

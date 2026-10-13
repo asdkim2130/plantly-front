@@ -7,7 +7,7 @@ import CompanyDetailView, { DetailSkeleton, externalHref } from "@/components/Co
 import DetailLink from "@/components/DetailLink";
 import GradeLabel from "@/components/GradeLabel";
 import { useSession } from "@/components/SessionProvider";
-import { EyeOffIcon, StarIcon, TrashIcon } from "@/components/icons";
+import { EyeOffIcon, PencilIcon, StarIcon, TrashIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
 import { getAdminCompany, getAdminSubscription } from "@/lib/admin";
 import { formatBusinessNumber, formatDate, relativeTime } from "@/lib/register";
@@ -28,8 +28,7 @@ type Loaded = {
  *
  * 소유자 상세와 다른 자리:
  *  - 히어로 위 띠: 삭제됨 · 공개 상태 · 등록 출처 · 소유자 연동 · 등록일 · 최근 수정
- *  - 히어로 버튼: 공개 페이지 보기(공개이고 삭제되지 않았을 때만) · 웹사이트 · 목록으로.
- *    "수정" 은 없다 — 관리자 수정 화면이 아직 없다(소유자 수정 화면은 관리자에게 403).
+ *  - 히어로 버튼: 기업정보 수정(관리자 수정 화면) · 공개 페이지 보기(공개이고 삭제되지 않았을 때만) · 웹사이트 · 목록으로.
  *  - 사이드바 "운영 정보": 사업자번호 · 국세청 인증 · 등급(구독). 관리자 구독 응답에는 한도(limits)가 없어 한도 줄은 없다.
  *
  * 추천·스팟라이트 켜고 끄기는 목록 카드에서 한다(클라이언트 요구가 "목록에서 바로").
@@ -146,17 +145,24 @@ export default function AdminCompanyDetailPage({ params }: PageProps<"/admin/com
       ))}
       heroActions={
         <>
-          {hasPublicPage ? (
-            <DetailLink companyId={companyId} className="btn btn-primary w-full py-[11px] text-[15px]">
-              공개 페이지 보기
-            </DetailLink>
-          ) : (
-            <button type="button" disabled className="btn btn-primary w-full py-[11px] text-[15px]">
-              공개 페이지 없음
-            </button>
-          )}
+          <Link href={`/admin/companies/${companyId}/edit`} className="btn btn-primary w-full py-[11px] text-[15px]">
+            <PencilIcon size={15} />
+            기업정보 수정
+          </Link>
 
           <div className="flex gap-2">
+            {hasPublicPage ? (
+              <DetailLink
+                companyId={companyId}
+                className="btn flex-1 border-white/30 bg-white/10 text-white hover:bg-white/20"
+              >
+                공개 페이지
+              </DetailLink>
+            ) : (
+              <button type="button" disabled className="btn flex-1 border-white/20 bg-white/5 text-white/50">
+                공개 페이지 없음
+              </button>
+            )}
             <Link
               href="/admin/companies"
               className="btn flex-1 border-white/30 bg-white/10 text-white hover:bg-white/20"

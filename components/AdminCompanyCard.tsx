@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import CoverCard from "@/components/CoverCard";
 import DetailLink from "@/components/DetailLink";
@@ -30,7 +31,7 @@ type Props = {
  *  - 아랫단: **추천 노출 · 스팟라이트 고정 스위치**(클라이언트 요구 — 목록에서 바로 켜고 끈다) + 국세청 인증 · 등록 출처
  *
  * 카드를 누르면 관리자 상세(`/admin/companies/{id}`)로 간다. 소유자 상세(`/manage`)는 멤버만 열려 관리자에게 403 이다.
- * "수정" 은 두지 않았다 — 소유자 수정 화면도 소유자 API 를 써서 관리자에게 403 이고, 관리자 수정 화면은 아직 없다.
+ * "수정" 은 ⋯ 메뉴 맨 위에 둔다(관리자 수정 `/admin/companies/{id}/edit`). 아랫단은 스위치 자리라 내 기업 카드처럼 꺼내지 않았다.
  *
  * 두 스위치는 뜻이 다르다. 추천은 순수 관리자 큐레이션이라 끄면 추천 레일에서 바로 빠진다. 스팟라이트는 **수동 고정**이라
  * 유료 활성 구독(PREMIUM·ENTERPRISE)은 꺼져 있어도 요금제로 레일에 오른다 — 그 경우 스위치 옆에 "요금제로 노출"을 붙여
@@ -250,6 +251,9 @@ function CardMenu({
       </button>
       {open && (
         <div role="menu" className="omenu">
+          <Link role="menuitem" href={`/admin/companies/${company.id}/edit`} className="omi">
+            수정
+          </Link>
           {hasPublicPage ? (
             <DetailLink companyId={company.id} className="omi">
               공개 페이지 보기

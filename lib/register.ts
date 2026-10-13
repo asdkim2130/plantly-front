@@ -68,10 +68,11 @@ export type SectionProps = {
   /** 수정 화면에서만: 저장돼 있지만 등급 한도를 넘겨 공개되지 않는 항목(회색으로 그린다) */
   hidden?: HiddenItems;
   /**
-   * 관리자 등록에서만: 신원 3종(사업자번호·대표자명·개업일자)을 기본 정보 섹션에서 직접 입력받는다.
-   * 자가등록은 국세청 인증본이 채워 칸이 없다.
+   * 관리자 화면에서만: 신원을 기본 정보 섹션에서 직접 입력받는다. 자가등록·소유자 수정은 국세청 인증본이 채워 칸이 없다.
+   *  - "create"(관리자 등록): 사업자번호 · 대표자명 · 개업일자
+   *  - "edit"(관리자 수정, 국세청 미인증 회사): 대표자명 · 개업일자 — 사업자번호는 수정 API 에 없다
    */
-  identity?: boolean;
+  identity?: "create" | "edit";
 };
 
 /**
@@ -505,7 +506,11 @@ const EMAIL = /^[^\s@]+@[^\s@]+$/;
  * 홈페이지 형식은 서버에 없는 규칙이다. 상세 화면이 이 값을 링크로 걸기 때문에 `www.…` 만 저장되면
  * 사이트 안의 상대경로로 깨진다 — 디자인이 정한 화면 규칙으로 둔다.
  */
-export function validate(form: RegisterForm, identity = false): FormError[] {
+/**
+ * @param identity 관리자 화면이라 신원 칸이 있는가(대표자명 필수 · 사업자번호 형식 · 개업일자 미래 불가)
+ * @param requireDate 개업일자를 비울 수 없는가 — 수정은 날짜 비우기를 지원하지 않아, 저장값이 있으면 비운 채 저장을 막는다
+ */
+export function validate(form: RegisterForm, identity = false, requireDate = false): FormError[] {
   const errors: FormError[] = [];
   const push = (key: string, message: string) => errors.push({ section: FIELD_LABEL[key][0], key, message });
 
@@ -517,6 +522,7 @@ export function validate(form: RegisterForm, identity = false): FormError[] {
     // 문자열 비교로 충분하다(yyyy-MM-dd). Date 로 파싱하면 UTC 로 읽혀 시간대에 따라 하루가 밀린다.
     if (form.establishmentDate && form.establishmentDate > localToday())
       push("establishmentDate", "개업일자는 오늘보다 미래일 수 없습니다.");
+    if (requireDate && !form.establishmentDate) push("establishmentDate", "개업일자는 비울 수 없습니다.");
   }
   if (form.website.trim() && !URL_SCHEME.test(form.website.trim()))
     push("website", "http:// 또는 https:// 로 시작하는 주소를 입력해 주세요.");
