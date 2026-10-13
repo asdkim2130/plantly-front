@@ -32,8 +32,9 @@ type Props = {
  *  - 주소 뒤: 등록일 · 최근 수정
  *  - 아랫단: 공개 상태 · 국세청 인증 · 수정
  *
- * 카드를 눌러도 이동하지 않는다. 가야 할 곳은 소유자 상세 화면인데 아직 없다 — 생기면 CoverCard 의 덮개 링크를
- * 그쪽 주소로 연다. 공개 상세로 보내지 않는 이유: 비공개 회사는 공개 상세가 404 다.
+ * 카드를 누르면 소유자 상세(`/companies/{id}/manage`)로 같은 탭에서 넘어간다. 공개 상세로 보내지 않는 이유:
+ * 비공개 회사는 공개 상세가 404 고, 꺼진 항목·등급처럼 소유자가 봐야 할 값이 그쪽에는 없다.
+ * 덮개 링크가 카드 전체를 덮으므로 아랫단 "수정" 링크는 `relative z-[1]` 로 그 위에 올려 둔다.
  *
  * "국세청 인증하기"(미인증 회사)는 디자인에 있지만 그리지 않는다. 서버의 재인증은 이미 인증된 회사의
  * 대표자·개업일자를 바꾸는 길이라 미인증 회사는 거절한다(COMPANY_NOT_BUSINESS_VERIFIED) — 처음 인증하는 길이 생기면 붙인다.
@@ -49,7 +50,7 @@ export default function OwnerCompanyCard({ company, now, busy, onToggleVisibilit
   return (
     <CoverCard
       company={company}
-      linked={false}
+      href={`/companies/${company.id}/manage`}
       verifiedMark={false}
       fixedRows
       className={isPublic ? "" : "own-priv"}
@@ -112,7 +113,7 @@ export default function OwnerCompanyCard({ company, now, busy, onToggleVisibilit
           )}
           <Link
             href={`/companies/${company.id}/edit`}
-            className="btn btn-outline ml-auto hidden px-3 py-[5px] text-[13px] sm:inline-flex"
+            className="btn btn-outline relative z-[1] ml-auto hidden px-3 py-[5px] text-[13px] sm:inline-flex"
           >
             <PencilIcon size={13} />
             수정

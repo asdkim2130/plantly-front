@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import CardSlot from "@/components/CardSlot";
 import Cover from "@/components/Cover";
 import DetailLink from "@/components/DetailLink";
@@ -8,13 +9,17 @@ import TagRow from "@/components/TagRow";
 import { PinIcon, VerifiedIcon } from "@/components/icons";
 import type { CompanySummary } from "@/types/api";
 
+/** 회사명 링크에 씌워 카드 크기만큼 늘리는 덮개 */
+const OVERLAY_LINK =
+  "text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-brand";
+
 type Props = {
   company: CompanySummary;
   /**
-   * 회사명을 카드 전체를 덮는 상세 링크로 만든다. 끄면 회사명은 글자일 뿐이고 카드를 눌러도 어디로도 가지 않는다
-   * (내 기업 목록 — 소유자 상세 화면이 생기면 그쪽 링크로 바꾼다).
+   * 카드 전체를 덮는 링크의 목적지. 생략하면 공개 상세를 팝업 창으로 연다(DetailLink).
+   * 주면 그 주소로 같은 탭에서 넘어간다 — 내 기업 목록은 소유자 상세(`/companies/{id}/manage`)로 보낸다.
    */
-  linked?: boolean;
+  href?: string;
   /** 커버 왼쪽 위 배지 줄 */
   badges?: React.ReactNode;
   /** 커버 오른쪽 위 버튼 자리. 덮개 링크보다 위로 올라가 있다 */
@@ -45,7 +50,7 @@ type Props = {
  */
 export default function CoverCard({
   company,
-  linked = true,
+  href,
   badges,
   actions,
   verifiedMark = true,
@@ -86,16 +91,15 @@ export default function CoverCard({
           <div>
             <div className="flex items-center gap-1.5">
               <h3 className="min-w-0 truncate text-[19px] leading-tight">
-                {linked ? (
-                  /* 카드 전체가 클릭 대상이다 — 덮개 방식의 이유는 CompanyCard 주석 참고. */
-                  <DetailLink
-                    companyId={company.id}
-                    className="text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-brand"
-                  >
+                {/* 카드 전체가 클릭 대상이다 — 덮개 방식의 이유는 CompanyCard 주석 참고. */}
+                {href ? (
+                  <Link href={href} className={OVERLAY_LINK}>
+                    {company.companyName}
+                  </Link>
+                ) : (
+                  <DetailLink companyId={company.id} className={OVERLAY_LINK}>
                     {company.companyName}
                   </DetailLink>
-                ) : (
-                  company.companyName
                 )}
               </h3>
               {verifiedMark && company.verified && (
