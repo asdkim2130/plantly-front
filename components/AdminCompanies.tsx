@@ -48,8 +48,8 @@ type Confirm = { kind: "private" | "delete"; company: AdminCompanySummary };
  *  - **필터 칩 + 회사명 검색**이 있다. 추천·스팟라이트를 켜고 끌 대상을 찾는 화면이라서다. 조건은 주소에 싣는다(`?f=&q=&page=`).
  *  - 카드 아랫단의 **추천 노출 · 스팟라이트 고정 스위치**(AdminCompanyCard).
  *
- * "새 기업 등록" 은 관리자 등록 화면이 아직 없어 비활성이다. 화면이 생기면 `/admin/companies/new` 링크로 바꾼다.
- * 소유자용 등록(`/companies/new`)으로 보내지 않는 이유: 그 길은 국세청 인증을 거쳐 누른 사람을 소유자로 만든다.
+ * "새 기업 등록" 은 관리자 등록(`/admin/companies/new`)으로 간다. 소유자용 등록(`/companies/new`)으로 보내지 않는
+ * 이유: 그 길은 국세청 인증을 거쳐 누른 사람을 소유자로 만든다.
  *
  * 권한: 화면은 `userRole` 로 관리자가 아니면 그리지 않지만, 실제로 막는 건 서버다(관리자 API 는 MEMBER 에게 403).
  */
@@ -212,16 +212,9 @@ export default function AdminCompanies() {
             <h1 className="text-[30px] leading-[1.1]">기업 관리</h1>
             {companies && !error && <span className="font-heading text-xl text-brand-700">{total}개</span>}
           </div>
-          {/* 관리자 등록 화면이 생기면 Link href="/admin/companies/new" 로 바꾼다(위 주석). */}
-          <button
-            type="button"
-            disabled
-            title="관리자 등록 화면을 준비하고 있습니다"
-            className="btn btn-primary justify-center px-[18px]"
-          >
+          <Link href="/admin/companies/new" className="btn btn-primary justify-center px-[18px]">
             <PlusIcon size={15} strokeWidth={1.8} />새 기업 등록
-            <span className="text-xs font-normal opacity-80">준비 중</span>
-          </button>
+          </Link>
         </div>
       </div>
 
