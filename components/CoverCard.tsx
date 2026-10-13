@@ -7,14 +7,14 @@ import DetailLink from "@/components/DetailLink";
 import Logo from "@/components/Logo";
 import TagRow from "@/components/TagRow";
 import { PinIcon, VerifiedIcon } from "@/components/icons";
-import type { CompanySummary } from "@/types/api";
+import type { CardCompany } from "@/types/api";
 
 /** 회사명 링크에 씌워 카드 크기만큼 늘리는 덮개 */
 const OVERLAY_LINK =
   "text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-brand";
 
 type Props = {
-  company: CompanySummary;
+  company: CardCompany;
   /**
    * 카드 전체를 덮는 링크의 목적지. 생략하면 공개 상세를 팝업 창으로 연다(DetailLink).
    * 주면 그 주소로 같은 탭에서 넘어간다 — 내 기업 목록은 소유자 상세(`/companies/{id}/manage`)로 보낸다.

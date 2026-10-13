@@ -10,6 +10,7 @@ import CompanyDetailView, {
 } from "@/components/CompanyDetailView";
 import DetailLink from "@/components/DetailLink";
 import { useSession } from "@/components/SessionProvider";
+import GradeLabel from "@/components/GradeLabel";
 import { EyeOffIcon, PencilIcon, ShareIcon, StarIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
 import { getMyCompany, getSubscription } from "@/lib/companies";
@@ -242,31 +243,5 @@ export default function OwnerCompanyDetailPage({ params }: PageProps<"/companies
         </div>
       }
     />
-  );
-}
-
-/**
- * 등급 한 줄. 화면의 등급은 계약 등급(grade)이 아니라 서버가 만료·체험을 반영해 파생한 effectiveGrade 다.
- * 둘이 다르면 체험이 끝나 강등된 상태라 계약 등급을 괄호로 남긴다.
- */
-function GradeLabel({ subscription }: { subscription: CompanySubscriptionResponse }) {
-  const { grade, effectiveGrade, status, expiresAt } = subscription;
-  const suffix =
-    grade !== effectiveGrade
-      ? `${grade} 만료`
-      : status === "TRIAL"
-        ? expiresAt
-          ? `체험 · ${expiresAt}까지`
-          : "체험"
-        : status === "ADMIN_EXEMPT"
-          ? "한도 면제"
-          : expiresAt
-            ? `${expiresAt}까지`
-            : null;
-  return (
-    <>
-      <span className="font-heading tracking-[0.06em]">{effectiveGrade}</span>
-      {suffix && <span className="text-muted"> ({suffix})</span>}
-    </>
   );
 }

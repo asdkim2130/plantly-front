@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CompanySummary } from "@/types/api";
+import type { CardCompany } from "@/types/api";
 
 type Props = {
-  company: CompanySummary;
+  company: CardCompany;
   /** 접지 않고 전부 그린다. 펼침이 잘리는 레일(스포트라이트)에서 쓴다. */
   expand?: boolean;
   /**
