@@ -123,7 +123,7 @@ npm run dev        # http://localhost:3000
 | `GET /api/v1/admin/companies/{id}`, `.../subscription` | 상세(소유자 상세와 같은 profile+meta, 삭제 회사도 열림) · 구독(한도 `limits` 없음) |
 | `PATCH /api/v1/admin/companies/{id}/flags` | 에디터 선정·추천·스팟라이트 고정 (sparse, 멱등) |
 | `PATCH .../visibility`, `DELETE /api/v1/admin/companies/{id}`, `POST .../restore` | 공개 전환 · 삭제 · 복구 |
-| `POST /api/v1/admin/companies` | 관리자 등록(국세청 인증 없음, 사업자번호·대표자 직접 입력) — 화면 아직 없음 |
+| `POST /api/v1/admin/companies` | 관리자 등록(국세청 인증 없음, 사업자번호·대표자·개업일자 직접 입력). 소유자 미연동 · 구독 ADMIN_EXEMPT |
 
 ## 프론트가 틀리기 쉬운 도메인 규칙
 
@@ -355,6 +355,7 @@ lib/postcode.ts          주소 검색(카카오 우편번호 팝업). 쓸 기�
 app/companies/new/page.tsx  기업정보 등록 — 인증 → 작성 → 완료 세 단계 (아래 "기업정보 등록 화면")
 app/companies/[id]/edit/page.tsx  기업정보 수정(소유자) — 섹션별 저장 (아래 "기업정보 수정 화면")
 app/admin/companies/page.tsx  관리자 기업 목록 — 필터·검색 + 추천/스팟라이트 스위치 (아래 "관리자 기업 목록 화면")
+app/admin/companies/new/page.tsx  관리자 기업 등록 — 자가등록 작성 폼(RegisterForm kind="admin") + 완료 (아래 "관리자 기업 등록 화면")
 app/admin/companies/[id]/page.tsx  관리자 기업 상세 — 상세 몸통 + 운영 정보
 components/AdminCompanies.tsx  관리자 목록 본문 / components/AdminCompanyCard.tsx  관리자 카드(CoverCard 자리 교체)
 components/ManageListParts.tsx  내 기업·관리자 목록이 함께 쓰는 확인 창·자리표시·알림·실패 문구
@@ -829,8 +830,8 @@ Claude Design 으로 넘길 핸드오프 문서는 `docs/design/company-list.md`
 
 - **작성 중인 등록 영역이 없다.** 초안은 "그 사용자가 국세청 인증을 받은 사업자번호"에만 저장되는데(`CompanyDraftService`),
   관리자 등록은 국세청 인증 없이 사업자번호를 직접 넣는 경로라 초안을 둘 수 없다. 필요해지면 백엔드에 관리자 초안 API 부터.
-- **"새 기업 등록" 은 비활성("준비 중")이다.** 관리자 등록 화면이 아직 없다. 소유자 등록(`/companies/new`)으로 보내지 않는
-  이유: 그 길은 국세청 인증을 거치고 누른 사람을 소유자로 만든다. 화면이 생기면 `/admin/companies/new` 링크로 바꾼다.
+- **"새 기업 등록" 은 관리자 등록(`/admin/companies/new`)으로 간다.** 소유자 등록(`/companies/new`)으로 보내지 않는
+  이유: 그 길은 국세청 인증을 거치고 누른 사람을 소유자로 만든다.
 - **필터 칩(전체 · 추천 노출 · 스팟라이트 고정 · 삭제됨) + 회사명 검색.** 조건은 주소에 싣는다(`?f=&q=&page=`).
   "전체" 는 삭제된 기업까지 포함한다(서버 기본값) — 카드에 "삭제됨" 배지가 붙는다.
 - **카드 아랫단의 추천 노출 · 스팟라이트 고정 스위치**가 클라이언트 요구사항이다. 누르면 확인 없이 바로 보낸다(`PATCH .../flags`).
@@ -851,4 +852,22 @@ Claude Design 으로 넘길 핸드오프 문서는 `docs/design/company-list.md`
 
 ### 아직 안 한 것
 
-- 관리자 등록 화면(`/admin/companies/new`), 관리자 수정 화면, 관리자 임시저장(백엔드부터).
+- 관리자 수정 화면, 관리자 임시저장(백엔드부터).
+
+## 관리자 기업 등록 화면 (`/admin/companies/new`)
+
+**자가등록의 작성 단계와 같은 폼**(`RegisterForm kind="admin"`)이다. 국세청 인증이 없어 인증 단계 없이 바로 작성
+화면이 뜨고, 단계는 작성 → 완료 둘이다. 갈리는 곳은 전부 "인증이 없다"에서 나온다:
+
+| 자가등록 | 관리자 등록 |
+|---|---|
+| 신원 3종은 인증본이 채워 남색 띠에 읽기 전용 | 기본 정보(A) 섹션에서 직접 입력 — 사업자번호(선택, 하이픈 허용) · **대표자명(필수)** · 개업일자(선택, 미래 불가) |
+| 필수 4칸 | 필수 5칸(대표자명 추가) |
+| 등급 한도 = 인증 결과의 `limits` | 등록 폼 제약(`company-create`)의 **천장값** — ADMIN_EXEMPT 는 등급 한도를 건너뛰어 남는 상한이 DTO 천장이다(카테고리 10 · 상세 30 · 레퍼런스 이미지 10). 제약을 못 받으면 폼을 열지 않는다 |
+| 자동저장 · 임시저장 · "저장하고 나가기" | **없다**(초안은 그 사용자가 국세청 인증을 받은 번호에만 저장된다). 나가기 전에 내용이 사라진다고 알린다 |
+| 같은 번호 등록됨 → "다른 계정에서 등록" 배너 | `BUSINESS_NUMBER_TAKEN` → "같은 번호로 등록된 기업이 있다, 모르면 비워 두고 발행" 배너 |
+| 완료: 공개 상세 · 정보 수정 · 내 기업 | 완료: 관리자 상세 · 기업 관리 목록 · 다른 기업 등록(같은 주소라 폼을 새로 만든다) |
+
+- 만들어진 회사는 **소유자 미연동 · 국세청 미인증 · 구독 ADMIN_EXEMPT** 다. 신원 칸 아래에 "국세청 확인 없이 저장된다"고 적었다.
+- 서버 검증 실패의 `businessNumber`·`ceoName`·`establishmentDate` 는 기본 정보 섹션 칸 아래로 붙는다(FIELD_LABEL).
+

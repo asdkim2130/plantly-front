@@ -14,6 +14,14 @@
  * 화면 검증을 먼저 돌려 전부 모아 보여 주고, 통과하면 `POST /companies`. 서버가 돌려준 위반(errors[])도 같은
  * 자리(칸 아래 문구 + 배너 목록)에 붙인다. 오류 표시는 **고치는 대로 사라진다** — 화면 검증은 매 입력마다
  * 다시 돌고, 서버가 준 오류는 그 칸의 값이 바뀌면 지운다.
+ *
+ * ── 관리자 등록(kind="admin") ──
+ * 같은 폼을 `/admin/companies/new` 가 쓴다. 다른 점은 국세청 인증이 없다는 데서 전부 나온다:
+ *  - 신원 3종(사업자번호·대표자명·개업일자)을 기본 정보 섹션에서 직접 받는다(대표자명 필수 → 필수 5칸).
+ *  - **임시저장이 없다.** 초안은 그 사용자가 국세청 인증을 받은 번호에만 저장된다(CompanyDraftService) —
+ *    자동저장·임시저장 버튼·"저장하고 나가기"를 그리지 않고, 나갈 때 작성 내용이 사라진다고 알린다.
+ *  - 등급 한도는 인증 결과가 아니라 호출부가 준다(ADMIN_EXEMPT — 한도 면제라 등록 폼 제약의 천장값).
+ *  - 발행은 `POST /admin/companies`(소유자 미연동으로 만들어진다).
  */
 
 import { useRouter } from "next/navigation";
@@ -44,6 +52,7 @@ import {
 } from "@/components/register/OtherSections";
 import { rememberBusinessNumber } from "@/components/register/VerifyStep";
 import { ApiError } from "@/lib/api";
+import { createAdminCompany } from "@/lib/admin";
 import { createCompany, deleteDraft, saveDraft } from "@/lib/companies";
 import { subscribeUploads, uploadsInFlight } from "@/lib/meta";
 import {
@@ -55,12 +64,13 @@ import {
   formKeyOf,
   fromServerErrors,
   relativeTime,
-  REQUIRED_TOTAL,
   requiredDone,
+  requiredTotal,
   SECTIONS,
   sectionId,
   sectionStates,
   sortErrors,
+  toAdminPayload,
   toPayload,
   validate,
   type FormError,
@@ -70,7 +80,7 @@ import {
   type SectionKey,
   type SectionProps,
 } from "@/lib/register";
-import type { CompanyVerificationResponse } from "@/types/api";
+import type { CompanyGrade, CompanyVerificationResponse, GradeLimits } from "@/types/api";
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -80,6 +90,7 @@ type SaveState = "idle" | "pending" | "saving" | "saved" | "fail";
 type Banner =
   | { kind: "errors" }
   | { kind: "conflict" }
+  | { kind: "taken" }
   | { kind: "bizclosed"; message: string }
   | { kind: "ntsdelay" }
   | { kind: "removed"; items: FormError[] }
@@ -103,29 +114,44 @@ const BUSINESS_BLOCKED = new Set([
 ]);
 
 type Props = {
-  verification: CompanyVerificationResponse;
   initialForm: Form;
-  /** 이어쓰기면 초안의 마지막 저장 시각 */
-  initialSavedAt: string | null;
   masters: RegisterMasters;
   /** 선택지를 다시 받아 화면에 반영하고, 받은 값을 돌려준다 */
   reloadMasters: () => Promise<RegisterMasters>;
   onPublished: (companyId: number, form: Form) => void;
-  /** 인증을 다시 받으러 1단계로 */
-  onReverify: () => void;
-};
+} & (
+  | {
+      /** 자가등록(기본) — 국세청 인증 결과로 그린다 */
+      kind?: "owner";
+      verification: CompanyVerificationResponse;
+      /** 이어쓰기면 초안의 마지막 저장 시각 */
+      initialSavedAt: string | null;
+      /** 인증을 다시 받으러 1단계로 */
+      onReverify: () => void;
+    }
+  | {
+      /** 관리자 등록 — 인증·초안 없이 신원을 직접 받는다(파일 머리 주석) */
+      kind: "admin";
+      /** 등급 한도. 관리자 등록은 한도 면제라 등록 폼 제약의 천장값을 넘긴다 */
+      limits: GradeLimits;
+    }
+);
 
-export default function RegisterForm({
-  verification,
-  initialForm,
-  initialSavedAt,
-  masters,
-  reloadMasters,
-  onPublished,
-  onReverify,
-}: Props) {
+/** 관리자 등록 회사의 등급. 구독이 ADMIN_EXEMPT(계약 등급 ENTERPRISE)로 만들어진다 */
+const ADMIN_GRADE: CompanyGrade = "ENTERPRISE";
+
+export default function RegisterForm(props: Props) {
+  const { initialForm, masters, reloadMasters, onPublished } = props;
   const router = useRouter();
-  const businessNumber = verification.businessNumber;
+  const owner = props.kind === "admin" ? null : props;
+  const admin = owner === null;
+  const limits = props.kind === "admin" ? props.limits : props.verification.limits;
+  const grade = owner ? owner.verification.initialGrade : ADMIN_GRADE;
+  const businessNumber = owner?.verification.businessNumber ?? "";
+  const verificationId = owner?.verification.verificationId ?? 0;
+  const initialSavedAt = owner?.initialSavedAt ?? null;
+  // 로그인이 풀려 돌아올 주소
+  const formPath = admin ? "/admin/companies/new" : "/companies/new";
   const etcId = findEtcCertificationId(masters.certifications);
 
   const [form, setForm] = useState<Form>(initialForm);
@@ -146,14 +172,14 @@ export default function RegisterForm({
   const [removed, setRemoved] = useState<RemovedSelections>({});
 
   const errors = useMemo(() => {
-    const local = showErrors ? validate(form) : [];
+    const local = showErrors ? validate(form, admin) : [];
     // 같은 칸에 화면 검증과 서버 오류가 겹치면 화면 쪽을 남긴다(고치는 대로 사라진다).
     const extra = serverErrors
       .filter(({ error, snapshot }) => formKeyOf(error.key).every((key, i) => form[key] === snapshot[i]))
       .map(({ error }) => error)
       .filter((s) => !local.some((l) => l.key === s.key));
     return sortErrors([...local, ...extra]);
-  }, [form, showErrors, serverErrors]);
+  }, [form, showErrors, serverErrors, admin]);
   const fieldErrors = useMemo(() => errorMap(errors), [errors]);
 
   // ── 자동저장 ──
@@ -163,21 +189,22 @@ export default function RegisterForm({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chain = useRef<Promise<void>>(Promise.resolve());
   // 자동저장을 멈춰야 하는 상태(이미 등록됨·인증 없음). ref 로도 들어 예약된 저장이 확인한다.
-  const stopped = useRef(false);
+  // 관리자 등록은 처음부터 멈춰 있다 — 저장할 초안이 없다.
+  const stopped = useRef(admin);
 
   const runSave = useCallback((): Promise<void> => {
     chain.current = chain.current.then(async () => {
       if (stopped.current) return;
       setSaveState("saving");
       try {
-        await saveDraft(businessNumber, toPayload(formRef.current, verification.verificationId, etcId));
+        await saveDraft(businessNumber, toPayload(formRef.current, verificationId, etcId));
         setSavedAt(new Date().toISOString());
         setSaveState((state) => (state === "saving" ? "saved" : state));
       } catch (e) {
         setSaveState("fail");
         if (!(e instanceof ApiError)) return;
         if (e.isUnauthorized) {
-          router.replace(`/login?next=${encodeURIComponent("/companies/new")}`);
+          router.replace(`/login?next=${encodeURIComponent(formPath)}`);
         } else if (e.code === "VERIFICATION_ALREADY_USED") {
           stopped.current = true;
           setBanner({ kind: "savedup" });
@@ -188,7 +215,7 @@ export default function RegisterForm({
       }
     });
     return chain.current;
-  }, [businessNumber, verification.verificationId, etcId, router]);
+  }, [businessNumber, verificationId, etcId, router, formPath]);
 
   useEffect(() => {
     if (!dirty.current || stopped.current) return;
@@ -237,9 +264,10 @@ export default function RegisterForm({
     // (판단은 마지막으로 그린 값 기준이다. 갱신 함수는 순수해서 아래에서 한 번 더 불려도 같은 답을 낸다.)
     if (Object.keys(resolve(formRef.current)).length === 0) return;
     dirty.current = true;
-    if (!stopped.current) setSaveState("pending");
+    // 관리자 등록은 저장이 없어 "pending" 이 곧 "아직 발행 안 한 변경"이다 — 창을 닫을 때 묻는 근거로 쓴다.
+    if (!stopped.current || admin) setSaveState("pending");
     setForm((prev) => ({ ...prev, ...resolve(prev) }));
-  }, []);
+  }, [admin]);
 
   // ── 목차: 지금 보고 있는 섹션 ──
   const [active, setActive] = useState<SectionKey>("A");
@@ -267,7 +295,7 @@ export default function RegisterForm({
     if (publishing) return;
     setShowErrors(true);
     setServerErrors([]);
-    const local = validate(form);
+    const local = validate(form, admin);
     if (local.length) {
       setBanner({ kind: "errors" });
       goTo(local[0].section);
@@ -282,10 +310,12 @@ export default function RegisterForm({
     // 예약된 자동저장은 버린다 — 발행이 성공하면 서버가 초안을 지우고, 실패하면 아래에서 다시 저장된다.
     if (timer.current) clearTimeout(timer.current);
     try {
-      const { id } = await createCompany(toPayload(form, verification.verificationId, etcId));
+      const { id } = admin
+        ? await createAdminCompany(toAdminPayload(form, etcId))
+        : await createCompany(toPayload(form, verificationId, etcId));
       stopped.current = true;
       dirty.current = false;
-      rememberBusinessNumber(null);
+      if (!admin) rememberBusinessNumber(null);
       onPublished(id, form);
     } catch (e) {
       await handlePublishError(e);
@@ -301,7 +331,7 @@ export default function RegisterForm({
     const code = e.code ?? "";
     if (e.isUnauthorized) {
       await flushSave();
-      router.replace(`/login?next=${encodeURIComponent("/companies/new")}`);
+      router.replace(`/login?next=${encodeURIComponent(formPath)}`);
     } else if (e.errors.length) {
       const mapped = fromServerErrors(e.errors);
       setServerErrors(
@@ -309,6 +339,8 @@ export default function RegisterForm({
       );
       setBanner({ kind: "errors" });
       if (mapped[0]) goTo(sortErrors(mapped)[0].section);
+    } else if (admin && code === "BUSINESS_NUMBER_TAKEN") {
+      setBanner({ kind: "taken" });
     } else if (code === "BUSINESS_NUMBER_TAKEN" || code === "VERIFICATION_ALREADY_USED") {
       setBanner({ kind: "conflict" });
     } else if (BUSINESS_BLOCKED.has(code)) {
@@ -342,6 +374,15 @@ export default function RegisterForm({
   const [cancelOpen, setCancelOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
+  /** 관리자 등록: 저장할 곳이 없으니 그냥 나간다(확인 창이 내용이 사라진다고 이미 알렸다) */
+  function leaveWithoutSaving() {
+    setLeaving(true);
+    stopped.current = true;
+    dirty.current = false;
+    setSaveState("idle");
+    router.push("/admin/companies");
+  }
+
   async function saveAndLeave() {
     setLeaving(true);
     await flushSave();
@@ -368,16 +409,18 @@ export default function RegisterForm({
   const saveHalted = banner?.kind === "savedup" || banner?.kind === "noauth";
 
   // ── 그리기 ──
-  const states = sectionStates(form, verification.limits.videoAllowed);
-  const done = requiredDone(form);
+  const states = sectionStates(form, limits.videoAllowed, admin);
+  const done = requiredDone(form, admin);
+  const total = requiredTotal(admin);
   const sectionProps: SectionProps = {
     form,
     update,
     errors: fieldErrors,
     masters,
-    limits: verification.limits,
-    grade: verification.initialGrade,
+    limits,
+    grade,
     removed,
+    identity: admin,
   };
   const removedBySection = (key: SectionKey) => removedLeft.filter((item) => item.section === key).length;
 
@@ -387,52 +430,58 @@ export default function RegisterForm({
       <div className="sticky top-0 z-20 bg-white shadow-[0_1px_0_var(--color-line)]">
         <div className="flex flex-wrap items-center gap-3.5 px-4 py-3 sm:px-[30px]">
           <div className="mr-auto flex flex-col gap-0.5">
-            <div className="kick text-[11px] text-brand-700">Step 02 · Company Registration</div>
-            <h1 className="text-[22px] leading-[1.1]">기업정보 등록</h1>
+            <div className="kick text-[11px] text-brand-700">
+              {admin ? "Admin · Company Registration" : "Step 02 · Company Registration"}
+            </div>
+            <h1 className="text-[22px] leading-[1.1]">{admin ? "기업 등록 (관리자)" : "기업정보 등록"}</h1>
           </div>
-          <SaveStatus state={saveState} savedAt={savedAt} now={now} />
-          <span className="border-l border-line pl-3.5 text-xs text-muted">
+          {owner && <SaveStatus state={saveState} savedAt={savedAt} now={now} />}
+          <span className={`text-xs text-muted ${owner ? "border-l border-line pl-3.5" : ""}`}>
             필수{" "}
-            <b className={`font-heading text-sm ${done === REQUIRED_TOTAL ? "text-brand-700" : "text-ink"}`}>
-              {done} / {REQUIRED_TOTAL}
+            <b className={`font-heading text-sm ${done === total ? "text-brand-700" : "text-ink"}`}>
+              {done} / {total}
             </b>
           </span>
           <button type="button" className="btn btn-ghost" onClick={() => setCancelOpen(true)}>
             작성 취소
           </button>
-          <SaveButton state={saveState} halted={saveHalted} uploading={uploading} onClick={saveNow} />
+          {owner && <SaveButton state={saveState} halted={saveHalted} uploading={uploading} onClick={saveNow} />}
           <PublishButton publishing={publishing} uploading={uploading} onClick={publish} />
         </div>
-        <div className="flex flex-wrap items-center gap-x-[26px] gap-y-2 bg-brand-900 px-4 py-[11px] sm:px-[30px]">
-          <div className="ro">
-            <span className="k">사업자등록번호</span>
-            <span className="v font-heading text-[15px] tracking-[0.05em]">{formatBusinessNumber(businessNumber)}</span>
-          </div>
-          <div className="ro">
-            <span className="k">대표자</span>
-            <span className="v">{verification.ceoName}</span>
-          </div>
-          <div className="ro">
-            <span className="k">개업일자</span>
-            <span className="v font-heading text-[15px] tracking-[0.04em]">
-              {verification.businessStartDate.replaceAll("-", ".")}
+        {owner ? (
+          <div className="flex flex-wrap items-center gap-x-[26px] gap-y-2 bg-brand-900 px-4 py-[11px] sm:px-[30px]">
+            <div className="ro">
+              <span className="k">사업자등록번호</span>
+              <span className="v font-heading text-[15px] tracking-[0.05em]">{formatBusinessNumber(businessNumber)}</span>
+            </div>
+            <div className="ro">
+              <span className="k">대표자</span>
+              <span className="v">{owner.verification.ceoName}</span>
+            </div>
+            <div className="ro">
+              <span className="k">개업일자</span>
+              <span className="v font-heading text-[15px] tracking-[0.04em]">
+                {owner.verification.businessStartDate.replaceAll("-", ".")}
+              </span>
+            </div>
+            <span className="inline-flex items-center gap-[5px] rounded-full border border-white/30 py-1 pr-2.5 pl-2 text-xs text-white">
+              <ShieldCheckIcon size={13} strokeWidth={1.8} className="text-brand-300" />
+              국세청 인증 완료
             </span>
+            <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
+              <span className="tag bg-brand font-heading text-xs tracking-[0.08em] text-white">{grade}</span>
+              <LimitsLine limits={limits} />
+            </div>
           </div>
-          <span className="inline-flex items-center gap-[5px] rounded-full border border-white/30 py-1 pr-2.5 pl-2 text-xs text-white">
-            <ShieldCheckIcon size={13} strokeWidth={1.8} className="text-brand-300" />
-            국세청 인증 완료
-          </span>
-          <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
-            <span className="tag bg-brand font-heading text-xs tracking-[0.08em] text-white">
-              {verification.initialGrade}
-            </span>
-            <span className="text-xs text-white/70">
-              카테고리 {verification.limits.maxCategories} · 상세 이미지 {verification.limits.maxDetailImages}장 ·
-              레퍼런스 이미지 {verification.limits.maxReferenceImages}장 · 동영상{" "}
-              {verification.limits.videoAllowed ? "허용" : "불가"}
-            </span>
+        ) : (
+          <div className="flex flex-wrap items-center gap-x-[26px] gap-y-2 bg-brand-900 px-4 py-[11px] sm:px-[30px]">
+            <span className="text-[13px] text-white/85">국세청 인증 없이 등록합니다 · 소유자 미연동으로 만들어집니다</span>
+            <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
+              <span className="tag bg-brand text-xs text-white">등급 한도 면제</span>
+              <LimitsLine limits={limits} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="grid items-start gap-6 px-4 pt-[22px] pb-10 sm:px-[30px] lg:grid-cols-[186px_minmax(0,1fr)_296px]">
@@ -474,16 +523,23 @@ export default function RegisterForm({
           <div className="flex items-baseline gap-2 py-0.5">
             <span className="req text-xs">★</span>
             <p className="text-[13px] leading-[1.6] text-muted">
-              <b className="font-semibold text-ink">필수 정보 4가지만 입력하면 기업 페이지를 발행할 수 있습니다.</b>
+              <b className="font-semibold text-ink">필수 정보 {total}가지만 입력하면 기업 페이지를 발행할 수 있습니다.</b>
               <br />
-              기업명 · 우편번호 · 도로명 주소 · 상세주소
+              {admin ? "기업명 · 대표자명 · 우편번호 · 도로명 주소 · 상세주소" : "기업명 · 우편번호 · 도로명 주소 · 상세주소"}
               <br />그 외 정보는 발행 후에도 언제든 추가할 수 있습니다.
             </p>
           </div>
-          <div className="-mt-2 flex items-center gap-2 text-[13px] text-muted">
-            <CloudCheckIcon size={14} className="shrink-0 text-brand-700" />
-            작성 중인 내용은 자동으로 임시저장 됩니다. 같은 사업자번호로 인증하면 이어서 작성할 수 있습니다.
-          </div>
+          {owner ? (
+            <div className="-mt-2 flex items-center gap-2 text-[13px] text-muted">
+              <CloudCheckIcon size={14} className="shrink-0 text-brand-700" />
+              작성 중인 내용은 자동으로 임시저장 됩니다. 같은 사업자번호로 인증하면 이어서 작성할 수 있습니다.
+            </div>
+          ) : (
+            <div className="-mt-2 flex items-center gap-2 text-[13px] text-muted">
+              <CloudAlertIcon size={14} className="shrink-0 text-brand-700" />
+              관리자 등록은 임시저장되지 않습니다. 발행하기 전에 화면을 떠나면 작성한 내용이 사라집니다.
+            </div>
+          )}
 
           {shownBanner && (
             <FormBanner
@@ -494,7 +550,7 @@ export default function RegisterForm({
               publish={publish}
               onReverify={async () => {
                 await flushSave();
-                onReverify();
+                owner?.onReverify();
               }}
             />
           )}
@@ -514,16 +570,14 @@ export default function RegisterForm({
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-brand-100/40 px-[18px] py-4">
             <div className="flex-1">
               <div className="font-heading text-lg">
-                {done === REQUIRED_TOTAL
-                  ? "필수 항목을 모두 채웠습니다"
-                  : `필수 항목 ${REQUIRED_TOTAL - done}개가 남았습니다.`}
+                {done === total ? "필수 항목을 모두 채웠습니다" : `필수 항목 ${total - done}개가 남았습니다.`}
               </div>
               <p className="fhint mt-0.5">기업 페이지를 발행할 때 입력한 모든 정보를 최종 확인합니다.</p>
             </div>
             <button type="button" className="btn btn-ghost" onClick={() => setCancelOpen(true)}>
               작성 취소
             </button>
-            <SaveButton state={saveState} halted={saveHalted} uploading={uploading} onClick={saveNow} />
+            {owner && <SaveButton state={saveState} halted={saveHalted} uploading={uploading} onClick={saveNow} />}
             <PublishButton publishing={publishing} uploading={uploading} onClick={publish} />
           </div>
         </div>
@@ -539,7 +593,7 @@ export default function RegisterForm({
               ? "로고를 등록하지 않으면 기업명의 앞 두 글자가 기본 로고로 표시됩니다."
               : "커버가 없으면 브랜드 컬러로 대체 디자인을 그립니다. 로고는 앞 두 글자 배지로 대신합니다."}
           </p>
-          <SearchCoverage form={form} ceoName={verification.ceoName} />
+          <SearchCoverage form={form} ceoName={owner ? owner.verification.ceoName : form.ceoName} />
         </aside>
       </div>
 
@@ -556,8 +610,9 @@ export default function RegisterForm({
               기업 정보 작성을 취소하시겠습니까?
             </h2>
             <p className="text-[13px] leading-[1.65] text-muted">
-              작성 중인 내용을 저장하면 동일한 사업자등록번호로 언제든 이어서 작성할 수 있습니다. 저장하지 않고
-              삭제하면 지금까지 작성한 내용은 복구할 수 없습니다.
+              {admin
+                ? "관리자 등록은 임시저장되지 않아, 나가면 지금까지 작성한 내용은 복구할 수 없습니다."
+                : "작성 중인 내용을 저장하면 동일한 사업자등록번호로 언제든 이어서 작성할 수 있습니다. 저장하지 않고 삭제하면 지금까지 작성한 내용은 복구할 수 없습니다."}
             </p>
             <div className="mt-1 flex flex-wrap justify-end gap-2">
               <button
@@ -569,17 +624,30 @@ export default function RegisterForm({
               >
                 계속 작성
               </button>
-              <button type="button" className="btn btn-secondary" disabled={leaving} onClick={saveAndLeave}>
-                저장하고 나가기
-              </button>
-              <button
-                type="button"
-                className="btn border-danger bg-white text-danger hover:bg-danger-soft"
-                disabled={leaving}
-                onClick={discardAndLeave}
-              >
-                삭제하고 나가기
-              </button>
+              {admin ? (
+                <button
+                  type="button"
+                  className="btn border-danger bg-white text-danger hover:bg-danger-soft"
+                  disabled={leaving}
+                  onClick={leaveWithoutSaving}
+                >
+                  나가기
+                </button>
+              ) : (
+                <>
+                  <button type="button" className="btn btn-secondary" disabled={leaving} onClick={saveAndLeave}>
+                    저장하고 나가기
+                  </button>
+                  <button
+                    type="button"
+                    className="btn border-danger bg-white text-danger hover:bg-danger-soft"
+                    disabled={leaving}
+                    onClick={discardAndLeave}
+                  >
+                    삭제하고 나가기
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -589,6 +657,15 @@ export default function RegisterForm({
 }
 
 const STATE_LABEL = { done: "모두 입력", part: "일부 입력", empty: "비어 있음" } as const;
+
+function LimitsLine({ limits }: { limits: GradeLimits }) {
+  return (
+    <span className="text-xs text-white/70">
+      카테고리 {limits.maxCategories} · 상세 이미지 {limits.maxDetailImages}장 · 레퍼런스 이미지 {limits.maxReferenceImages}장 ·
+      동영상 {limits.videoAllowed ? "허용" : "불가"}
+    </span>
+  );
+}
 
 function stillSelected(form: Form, removed: RemovedSelections, item: FormError) {
   const lists: [keyof RemovedSelections, number[]][] = [
@@ -716,6 +793,11 @@ function FormBanner({
           </button>
         );
       }
+      break;
+    case "taken":
+      title = "같은 사업자등록번호로 등록된 기업이 이미 있습니다.";
+      body =
+        "활성 기업 중 같은 번호가 있어 발행하지 못했습니다. 번호를 확인하거나, 번호를 모르면 비워 두고 발행할 수 있습니다. 작성한 내용은 그대로 있습니다.";
       break;
     case "conflict":
       title = "동일한 사업자등록번호로 다른 계정에서 기업 등록을 완료했습니다.";

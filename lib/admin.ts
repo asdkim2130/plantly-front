@@ -7,10 +7,20 @@ import type {
   AdminCompanyQuery,
   AdminCompanySubscriptionResponse,
   AdminCompanySummary,
+  CompanyCreateRequest,
   CompanyDetailResponse,
   CompanyVisibility,
+  IdResponse,
   PageResponse,
 } from "@/types/api";
+
+/**
+ * 관리자 등록. 국세청 인증 없이 바로 만들어지고, 소유자 미연동 · 등급 한도 면제(ADMIN_EXEMPT)로 시작한다.
+ * 검증 실패는 자가등록과 같은 모양(`errors[]`)으로 온다.
+ */
+export function createAdminCompany(payload: CompanyCreateRequest) {
+  return api.post<IdResponse>("/admin/companies", payload);
+}
 
 /** 관리자 목록. 필터가 없으면 삭제·비공개까지 전부, 최신 등록순. */
 export function listAdminCompanies(query: AdminCompanyQuery = {}, signal?: AbortSignal) {

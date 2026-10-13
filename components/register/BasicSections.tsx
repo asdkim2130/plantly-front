@@ -22,6 +22,7 @@ import { openPostcode, preloadPostcode } from "@/lib/postcode";
 import {
   DEFAULT_BRAND_COLOR,
   isBrandColor,
+  localToday,
   monogram,
   sectionId,
   type SectionProps,
@@ -29,10 +30,10 @@ import {
 import { formatBytes } from "@/lib/meta";
 import type { PricingType, TrlLevel } from "@/types/api";
 
-export function BasicInfoSection({ form, update, errors, masters }: SectionProps) {
+export function BasicInfoSection({ form, update, errors, masters, identity = false }: SectionProps) {
   const max = (field: string) => ruleValue(masters.constraints, field, "maxLength");
   return (
-    <Section id={sectionId("A")} letter="A" title="기본 정보" sub="기업명 필수">
+    <Section id={sectionId("A")} letter="A" title="기본 정보" sub={identity ? "기업명 · 대표자명 필수" : "기업명 필수"}>
       <TextField
         id="f-companyName"
         label="기업명"
@@ -43,6 +44,7 @@ export function BasicInfoSection({ form, update, errors, masters }: SectionProps
         placeholder="사업자등록증의 상호 또는 대외 브랜드명"
         error={errors.companyName}
       />
+      {identity && <IdentityFields form={form} update={update} errors={errors} max={max} />}
       <TextField
         id="f-introTitle"
         label="한 줄 요약"
@@ -73,6 +75,60 @@ export function BasicInfoSection({ form, update, errors, masters }: SectionProps
         error={errors.website}
       />
     </Section>
+  );
+}
+
+/**
+ * 관리자 등록의 신원 3종. 자가등록에서는 국세청 인증본이 채워 칸이 없다.
+ * 국세청에 확인하지 않은 값이라 그 사실을 칸 아래에 적는다 — 이 회사는 "국세청 미인증"으로 만들어진다.
+ */
+function IdentityFields({
+  form,
+  update,
+  errors,
+  max,
+}: Pick<SectionProps, "form" | "update" | "errors"> & { max: (field: string) => number | undefined }) {
+  return (
+    <>
+      <div className="grid gap-3.5 sm:grid-cols-2">
+        <TextField
+          id="f-businessNumber"
+          label="사업자등록번호"
+          value={form.businessNumber}
+          onChange={(businessNumber) => update({ businessNumber })}
+          max={12}
+          placeholder="123-45-67890 (모르면 비워 두기)"
+          error={errors.businessNumber}
+          inputClassName="font-heading tracking-[0.04em]"
+        />
+        <TextField
+          id="f-ceoName"
+          label="대표자명"
+          required
+          value={form.ceoName}
+          onChange={(ceoName) => update({ ceoName })}
+          max={max("ceoName")}
+          error={errors.ceoName}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5 sm:w-1/2 sm:pr-[7px]">
+        <FieldHead label="개업일자" htmlFor="f-establishmentDate" />
+        <input
+          id="f-establishmentDate"
+          type="date"
+          className={`field ${errors.establishmentDate ? "err" : ""}`}
+          max={localToday()}
+          value={form.establishmentDate}
+          aria-invalid={errors.establishmentDate ? true : undefined}
+          onChange={(e) => update({ establishmentDate: e.target.value })}
+        />
+        <ErrorLine message={errors.establishmentDate} />
+      </div>
+      <p className="fhint -mt-1">
+        국세청 확인 없이 입력한 값 그대로 저장됩니다. 이 기업은 &lsquo;국세청 미인증&rsquo;으로 등록되며, 같은 사업자등록번호로
+        이미 등록된 기업이 있으면 발행이 막힙니다.
+      </p>
+    </>
   );
 }
 

@@ -589,6 +589,17 @@ export type CertificationRequest = { certificationId: number; customName: string
  * 신원 3종(사업자번호·대표자명·개업일자)은 자리 자체가 없다 — 서버가 인증본에서 채운다.
  * 표시 순서(displayOrder)는 보내지 않는다. 배열 순서가 곧 순서다.
  */
+/**
+ * POST /api/v1/admin/companies — 관리자 등록. 자가등록 본문에서 인증 식별자를 빼고 신원 3종을 직접 싣는다.
+ * 국세청 인증을 거치지 않으며, 소유자 미연동 · 구독 ADMIN_EXEMPT(등급 한도 면제)로 만들어진다.
+ * 사업자번호(숫자 10자리, 하이픈 허용)·개업일자는 선택, 대표자명은 필수.
+ */
+export type CompanyCreateRequest = Omit<MyCompanyCreateRequest, "verificationId"> & {
+  businessNumber: string | null;
+  ceoName: string | null;
+  establishmentDate: string | null;
+};
+
 export type MyCompanyCreateRequest = {
   verificationId: number | null;
   companyName: string | null;

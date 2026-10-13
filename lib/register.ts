@@ -21,6 +21,7 @@ import type {
   DomesticRegionPublicResponse,
   GradeLimits,
   IndustryPublicResponse,
+  CompanyCreateRequest,
   MyCompanyCreateRequest,
   OptionsResponse,
   UploadConstraintsResponse,
@@ -66,6 +67,11 @@ export type SectionProps = {
   mode?: "create" | "edit";
   /** 수정 화면에서만: 저장돼 있지만 등급 한도를 넘겨 공개되지 않는 항목(회색으로 그린다) */
   hidden?: HiddenItems;
+  /**
+   * 관리자 등록에서만: 신원 3종(사업자번호·대표자명·개업일자)을 기본 정보 섹션에서 직접 입력받는다.
+   * 자가등록은 국세청 인증본이 채워 칸이 없다.
+   */
+  identity?: boolean;
 };
 
 /**
@@ -89,6 +95,13 @@ export type ReferenceForm = {
 export type RegisterForm = {
   // A 기본 정보
   companyName: string;
+  /**
+   * 신원 3종 — **관리자 등록에서만 쓴다.** 자가등록은 국세청 인증본이 채우므로 요청에도 초안에도 싣지 않는다
+   * (toPayload 가 무시한다). 사업자번호는 숫자만 또는 하이픈 포함(서버가 정규화), 개업일자는 yyyy-MM-dd.
+   */
+  businessNumber: string;
+  ceoName: string;
+  establishmentDate: string;
   introTitle: string;
   content: string;
   website: string;
@@ -134,6 +147,9 @@ export type RegisterForm = {
 export function emptyForm(): RegisterForm {
   return {
     companyName: "",
+    businessNumber: "",
+    ceoName: "",
+    establishmentDate: "",
     introTitle: "",
     content: "",
     website: "",
@@ -254,6 +270,22 @@ export function toPayload(form: RegisterForm, verificationId: number, etcId: num
   };
 }
 
+/**
+ * 폼 → 관리자 등록 요청(`POST /admin/companies`). 자가등록 본문에서 인증 식별자를 빼고 신원 3종을 직접 싣는다.
+ * 사업자번호·개업일자는 선택이다(관리자 대신등록은 번호를 모르는 채로도 올릴 수 있다 — 서버도 null 을 받는다).
+ */
+export function toAdminPayload(form: RegisterForm, etcId: number | null): CompanyCreateRequest {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { verificationId, ...rest } = toPayload(form, 0, etcId);
+  const digits = form.businessNumber.replace(/\D/g, "");
+  return {
+    ...rest,
+    businessNumber: digits === "" ? null : digits,
+    ceoName: blankToNull(form.ceoName),
+    establishmentDate: form.establishmentDate === "" ? null : form.establishmentDate,
+  };
+}
+
 /** 초안 payload → 폼. 저장할 때 null 로 바꾼 자리를 빈 문자열로 되돌린다. */
 export function fromPayload(payload: MyCompanyCreateRequest, etcId: number | null): RegisterForm {
   const base = emptyForm();
@@ -335,7 +367,7 @@ export const sectionId = (key: SectionKey) => `sec-${key}`;
 export type FillState = "done" | "part" | "empty";
 
 /** 칸 몇 개가 찼는지로 섹션의 채움 상태를 낸다(목차의 동그라미, 이어쓰기 카드의 "n개 섹션 작성"). */
-export function sectionStates(form: RegisterForm, videoAllowed: boolean): Record<SectionKey, FillState> {
+export function sectionStates(form: RegisterForm, videoAllowed: boolean, identity = false): Record<SectionKey, FillState> {
   const of = (...filled: boolean[]): FillState => {
     const count = filled.filter(Boolean).length;
     return count === 0 ? "empty" : count === filled.length ? "done" : "part";
@@ -344,7 +376,14 @@ export function sectionStates(form: RegisterForm, videoAllowed: boolean): Record
   const { contact, reference } = form;
 
   return {
-    A: of(has(form.companyName), has(form.introTitle), has(form.content), has(form.website)),
+    A: of(
+      has(form.companyName),
+      has(form.introTitle),
+      has(form.content),
+      has(form.website),
+      // 관리자 등록에서만 칸이 있다. 대표자명은 필수라 그걸로 센다(사업자번호·개업일자는 선택).
+      ...(identity ? [has(form.ceoName)] : []),
+    ),
     B: of(has(form.postalCode), has(form.roadAddress), has(form.detailAddress)),
     C: of(form.logoUrl !== null, form.coverImageUrl !== null, has(form.brandColor)),
     D: of(
@@ -370,12 +409,21 @@ export function sectionStates(form: RegisterForm, videoAllowed: boolean): Record
   };
 }
 
-/** 발행에 꼭 필요한 네 칸. 서버 DTO 의 @NotBlank 와 같은 목록이다(신원 3종은 인증본이 채운다). */
-export function requiredDone(form: RegisterForm): number {
-  return [form.companyName, form.postalCode, form.roadAddress, form.detailAddress].filter((v) => v.trim() !== "")
-    .length;
+/**
+ * 발행에 꼭 필요한 칸. 서버 DTO 의 @NotBlank 와 같은 목록이다 — 자가등록은 네 칸(신원 3종은 인증본이 채운다),
+ * 관리자 등록은 대표자명이 더해져 다섯 칸이다(CompanyCreateRequest).
+ */
+function requiredValues(form: RegisterForm, identity: boolean) {
+  const values = [form.companyName, form.postalCode, form.roadAddress, form.detailAddress];
+  return identity ? [...values, form.ceoName] : values;
 }
-export const REQUIRED_TOTAL = 4;
+export function requiredDone(form: RegisterForm, identity = false): number {
+  return requiredValues(form, identity).filter((v) => v.trim() !== "").length;
+}
+export function requiredTotal(identity = false) {
+  return requiredValues(emptyForm(), identity).length;
+}
+export const REQUIRED_TOTAL = requiredTotal();
 
 // ===== 검증 =====
 
@@ -388,6 +436,9 @@ export type FormError = { section: SectionKey; key: string; message: string };
  */
 const FIELD_LABEL: Record<string, [SectionKey, string]> = {
   companyName: ["A", "기업명"],
+  businessNumber: ["A", "사업자등록번호"],
+  ceoName: ["A", "대표자명"],
+  establishmentDate: ["A", "개업일자"],
   introTitle: ["A", "한 줄 요약"],
   content: ["A", "소개글"],
   website: ["A", "홈페이지"],
@@ -454,11 +505,19 @@ const EMAIL = /^[^\s@]+@[^\s@]+$/;
  * 홈페이지 형식은 서버에 없는 규칙이다. 상세 화면이 이 값을 링크로 걸기 때문에 `www.…` 만 저장되면
  * 사이트 안의 상대경로로 깨진다 — 디자인이 정한 화면 규칙으로 둔다.
  */
-export function validate(form: RegisterForm): FormError[] {
+export function validate(form: RegisterForm, identity = false): FormError[] {
   const errors: FormError[] = [];
   const push = (key: string, message: string) => errors.push({ section: FIELD_LABEL[key][0], key, message });
 
   if (!form.companyName.trim()) push("companyName", "기업명은 필수입니다.");
+  if (identity) {
+    const digits = form.businessNumber.replace(/[\s-]/g, "");
+    if (digits && !/^\d{10}$/.test(digits)) push("businessNumber", "사업자등록번호는 숫자 10자리입니다.");
+    if (!form.ceoName.trim()) push("ceoName", "대표자명은 필수입니다.");
+    // 문자열 비교로 충분하다(yyyy-MM-dd). Date 로 파싱하면 UTC 로 읽혀 시간대에 따라 하루가 밀린다.
+    if (form.establishmentDate && form.establishmentDate > localToday())
+      push("establishmentDate", "개업일자는 오늘보다 미래일 수 없습니다.");
+  }
   if (form.website.trim() && !URL_SCHEME.test(form.website.trim()))
     push("website", "http:// 또는 https:// 로 시작하는 주소를 입력해 주세요.");
   if (!form.postalCode.trim() || !form.roadAddress.trim())
@@ -484,6 +543,12 @@ export function validate(form: RegisterForm): FormError[] {
   }
 
   return errors;
+}
+
+/** 이 기기의 오늘(yyyy-MM-dd) */
+export function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /**
