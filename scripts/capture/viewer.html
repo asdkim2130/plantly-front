@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>플랜틀리 화면 캡처</title>
+<style>
+:root{
+  --navy:#0b2148;--brand:#0062F5;--brand-300:#a6c5ff;--brand-100:#eaf1ff;
+  --ink:#1d1f20;--muted:#616161;--faint:#949494;--line:#dbdbdb;--bg:#f2f2f3;--danger:#c4352b;
+  --heading:"Barlow Condensed","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  --body:"Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;padding-top:38px;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:13px}
+/* 상태 선택 띠는 평소엔 한 줄(38px)로 접혀 있고, 마우스를 올리거나 키보드 포커스가 들어오면 화면 위로 덮어 펼친다.
+   fixed 라 펼쳐져도 아래 캡처를 밀지 않는다. 닫힐 때만 잠깐 늦춰 띠와 버튼 사이를 지날 때 깜빡이지 않게 한다 */
+.bar{position:fixed;top:0;left:0;right:0;z-index:10;background:var(--navy);color:#fff;padding:0 16px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.top{display:flex;align-items:center;gap:12px;height:38px}
+.top h1{margin:0;font-family:var(--heading);font-size:18px;font-weight:600;letter-spacing:.02em}
+.top .gen{color:var(--brand-300);font-size:12px}
+.top .cur{font-size:12px;font-weight:600;background:rgba(255,255,255,.12);border-radius:999px;padding:2px 10px}
+.top .cur::after{content:" ▾";color:var(--brand-300)}
+.groups{display:flex;flex-direction:column;gap:5px;max-height:0;overflow:hidden;transition:max-height .18s ease .25s,padding .18s ease .25s}
+.bar:hover .groups,.bar:focus-within .groups{max-height:60vh;overflow:auto;padding-bottom:12px;transition-delay:0s}
+.grp{display:flex;align-items:flex-start;gap:8px}
+.grp .lb{flex:none;width:118px;padding-top:4px;font-size:12px;color:var(--brand-300)}
+.grp .bts{display:flex;flex-wrap:wrap;gap:5px}
+.sb{border:1px solid rgba(255,255,255,.22);background:transparent;color:#fff;border-radius:999px;padding:3px 10px;font:inherit;font-size:12px;cursor:pointer}
+.sb:hover{border-color:var(--brand-300)}
+.sb.on{background:#fff;color:var(--navy);border-color:#fff;font-weight:600}
+.sb.bad{border-style:dashed;color:#ffb4ad}
+.info{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line)}
+.info .t{font-size:16px;font-weight:600}
+.info .m{color:var(--muted)}
+.info code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--bg);padding:2px 6px;border-radius:4px}
+.info .note{flex-basis:100%;color:var(--muted)}
+.info .err{flex-basis:100%;color:var(--danger)}
+.sp{flex:1}
+.lnk{color:var(--brand);text-decoration:none}
+.lnk:hover{text-decoration:underline}
+.stage{padding:20px 16px 60px;overflow-x:auto}
+.frame{margin:0 auto;background:#fff;box-shadow:0 1px 0 var(--line),0 8px 30px rgba(0,0,0,.08)}
+.frame img{display:block;width:100%}
+.empty{padding:80px 20px;text-align:center;color:var(--muted)}
+.keys{color:var(--brand-300);font-size:11px;margin-left:auto}
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="top"><h1>PLANTLY · 화면 캡처</h1><span class="cur" id="cur"></span><span class="gen" id="gen"></span><span class="keys">← → 로 상태 이동</span></div>
+  <div class="groups" id="groups"></div>
+</div>
+<div class="info" id="info"></div>
+<div class="stage"><div class="frame" id="frame"></div></div>
+<script>
+const DATA = /*__DATA__*/null;
+const states = DATA.states;
+let current = 0;
+
+document.getElementById("gen").textContent = `${DATA.generatedAt} · ${states.length}개 상태 · ${DATA.base}`;
+
+const groupsEl = document.getElementById("groups");
+const byGroup = new Map();
+states.forEach((s, i) => {
+  if (!byGroup.has(s.group)) byGroup.set(s.group, []);
+  byGroup.get(s.group).push(i);
+});
+for (const [group, idx] of byGroup) {
+  const row = document.createElement("div");
+  row.className = "grp";
+  row.innerHTML = `<span class="lb"></span><span class="bts"></span>`;
+  row.querySelector(".lb").textContent = group;
+  for (const i of idx) {
+    const b = document.createElement("button");
+    b.className = "sb" + (states[i].error ? " bad" : "");
+    b.textContent = states[i].title;
+    b.dataset.i = i;
+    // 마우스로 눌렀으면 포커스를 놓는다 — 남아 있으면 :focus-within 때문에 마우스가 떠나도 띠가 접히지 않는다
+    b.onclick = (e) => { show(i); if (e.detail > 0) b.blur(); };
+    row.querySelector(".bts").appendChild(b);
+  }
+  groupsEl.appendChild(row);
+}
+
+function show(i) {
+  current = Math.max(0, Math.min(states.length - 1, i));
+  const s = states[current];
+  history.replaceState(null, "", "#" + s.id);
+  document.querySelectorAll(".sb").forEach((b) => b.classList.toggle("on", +b.dataset.i === current));
+  document.getElementById("cur").textContent = `${s.group} — ${s.title}`;
+
+  const info = document.getElementById("info");
+  info.innerHTML = "";
+  const add = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; e.textContent = text; info.appendChild(e); return e; };
+  add("span", "t", `${s.group} — ${s.title}`);
+  add("span", "m", `계정 ${s.account}`);
+  add("code", "", s.url || s.path);
+  info.appendChild(Object.assign(document.createElement("span"), { className: "sp" }));
+  if (!s.error) {
+    const open = add("a", "lnk", "원본 PNG 새 탭으로 ↗");
+    open.href = s.png;
+    open.target = "_blank";
+  }
+  if (s.note) add("span", "note", s.note);
+  if (s.error) add("span", "err", `캡처 실패: ${s.error}`);
+
+  const frame = document.getElementById("frame");
+  frame.style.width = DATA.width + "px";
+  frame.innerHTML = "";
+  if (s.error) {
+    frame.innerHTML = `<div class="empty">이 상태는 캡처하지 못했습니다.</div>`;
+  } else {
+    const img = new Image();
+    img.src = s.png;
+    img.alt = s.title;
+    frame.appendChild(img);
+  }
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest("input,textarea")) return;
+  if (e.key === "ArrowRight") show(current + 1);
+  else if (e.key === "ArrowLeft") show(current - 1);
+});
+
+const start = states.findIndex((s) => "#" + s.id === location.hash);
+show(start >= 0 ? start : 0);
+</script>
+</body>
+</html>

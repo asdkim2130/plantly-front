@@ -369,6 +369,10 @@ lib/companyEdit.ts       수정 모델 — 소유자 상세→폼, 섹션별 변
 lib/registerMasters.ts   등록·수정 폼 재료(선택지·라벨·제약) 한 번에 받기
 components/register/*    등록 화면 조각. VerifyStep / RegisterForm(자동저장·발행) / 섹션들 / CardPreview / DoneStep
 types/api.ts             백엔드 DTO 대응 타입
+scripts/capture/*        `npm run capture` — 화면 상태별 전체 PNG + 상태 전환 뷰어를 captures/<시각>/ 에 만든다.
+                         상태 목록은 scenarios.mjs. 쓰기 요청은 전부 막고, 서버에 써야 나오는 상태는 응답을 지어 보여 준다.
+                         **새 페이지를 만들면 scenarios.mjs 에 상태를 한 줄 이상 넣는다** — 빠지면 캡처 끝과
+                         `npm run capture:check`(서버 불필요)가 목록에 없는 화면을 알려 준다(routes.mjs)
 public/plantly-logo.png  헤더 로고 (디자인 프로젝트의 uploads/logo-trim.png)
 ```
 
