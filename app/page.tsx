@@ -90,9 +90,8 @@ export default function HomePage() {
 
   // ── 스포트라이트 / 추천 / 최근 등록 ──────────────────────────────────────
   // 메인의 기업 데이터는 이 요청 하나가 전부다. 어느 회사가 어느 자리를 차지하는지는 서버가 정한다 —
-  // 목록을 받아 플래그로 거르면 안 되는데, 요금제 자격으로 노출되는 회사는 spotlight 플래그가 false 라
-  // 걸러지지 않고(자격은 구독에서 조회 시점에 파생된다) 후보가 자리보다 많을 때 누가 잘리는지도
-  // 프론트가 알 수 없어서다.
+  // 목록을 받아 플래그로 거르면 안 되는데, 스팟라이트는 관리자가 정한 순서(spotlightOrder)로 서고
+  // 후보가 자리보다 많을 때 누가 잘리는지도 서버가 정해서, 플래그만 든 카드로는 재현할 수 없어서다.
   const [showcase, setShowcase] = useState<CompanyShowcaseResponse | null>(null);
 
   useEffect(() => {
@@ -138,7 +137,7 @@ export default function HomePage() {
   /**
    * 목록 API 를 쓰는 상태인지. 아니면 showcase 의 latest 를 그대로 그린다.
    *
-   * 조건 없이 전체를 훑는 건 이 화면의 일이 아니다 — 정렬 규칙이 다르고(유료 상위) 페이지가
+   * 조건 없이 전체를 훑는 건 이 화면의 일이 아니다 — 정렬 규칙이 다르고(고정·추천 상위) 페이지가
    * 이어지므로 `/companies` 목록 화면이 맡는다. 여기 격자는 큐레이션(최근 등록)과 그 위 손잡이로
    * 좁힌 결과까지다.
    */
@@ -453,7 +452,7 @@ export default function HomePage() {
           {/*
             기본 상태의 버튼은 "더 담기"가 아니라 **다른 화면으로 보내는 링크**다. 최근 등록 격자는
             자리 수가 고정된 레일이라 이어 붙일 다음 페이지가 없고, 전체를 훑는 건 정렬 규칙이
-            다른(유료 상위) 목록 API 의 몫이라 `/companies` 가 맡는다.
+            다른(고정·추천 상위) 목록 API 의 몫이라 `/companies` 가 맡는다.
           */}
           {!filtered && !cardsLoading && cards.length > 0 && (
             <div className="mt-1.5 flex justify-center">

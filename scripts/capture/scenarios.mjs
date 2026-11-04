@@ -74,7 +74,7 @@ export const SCENARIOS = [
 
   // ── 공개 상세 ──
   { id: "detail-c01", group: "기업 상세(공개)", title: "C01 기본 공개", account: "anon", path: "/companies/1" },
-  { id: "detail-c13", group: "기업 상세(공개)", title: "C13 만료 구독", account: "anon", path: "/companies/13" },
+  { id: "detail-c14", group: "기업 상세(공개)", title: "C14 검수 배지만", account: "anon", path: "/companies/14" },
   { id: "detail-c16", group: "기업 상세(공개)", title: "C16 배지 없음", account: "anon", path: "/companies/16" },
   { id: "detail-c17", group: "기업 상세(공개)", title: "C17 추천 + 에디터 선정", account: "anon", path: "/companies/17" },
   { id: "detail-c20", group: "기업 상세(공개)", title: "C20 빈 컬렉션", account: "anon", path: "/companies/20" },
