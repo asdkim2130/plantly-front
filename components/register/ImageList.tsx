@@ -40,7 +40,8 @@ export default function ImageList({
   urls: string[];
   /** 최신 배열을 받아 다음 배열을 돌려주는 함수형 갱신 — 여러 장이 동시에 끝나도 서로 덮어쓰지 않는다 */
   onChange: (next: (urls: string[]) => string[]) => void;
-  max: number;
+  /** 장수 상한(폼 제약 maxItems). 제약을 못 받았으면 undefined — 화면은 막지 않고 서버가 판정한다 */
+  max?: number;
   upload: UploadConstraintsResponse | null;
   label: string;
   /** 한 장도 없을 때 넓은 자리에 띄울 안내 */
@@ -56,7 +57,7 @@ export default function ImageList({
   const dragFrom = useRef<number | null>(null);
   const [overIndex, setOverIndex] = useState(-1);
 
-  const room = max - urls.length - pending.length;
+  const room = (max ?? Infinity) - urls.length - pending.length;
 
   async function send(tile: Pending) {
     const patch = (next: Partial<Pending>) =>

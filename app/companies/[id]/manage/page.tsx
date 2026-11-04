@@ -10,29 +10,27 @@ import CompanyDetailView, {
 } from "@/components/CompanyDetailView";
 import DetailLink from "@/components/DetailLink";
 import { useSession } from "@/components/SessionProvider";
-import GradeLabel from "@/components/GradeLabel";
 import { EyeOffIcon, PencilIcon, ShareIcon, StarIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
-import { getMyCompany, getSubscription } from "@/lib/companies";
+import { getMyCompany } from "@/lib/companies";
 import { formatBusinessNumber, formatDate, relativeTime } from "@/lib/register";
-import type { CompanyDetailResponse, CompanySubscriptionResponse } from "@/types/api";
+import type { CompanyDetailResponse } from "@/types/api";
 
 type Loaded = {
   id: number;
   detail: CompanyDetailResponse;
-  subscription: CompanySubscriptionResponse;
 };
 
 /**
- * 기업 상세(소유자) — `GET /companies/{id}/private` + `GET /companies/{id}/subscription`.
+ * 기업 상세(소유자) — `GET /companies/{id}/private`.
  *
  * 화면 몸통은 공개 상세와 같은 `CompanyDetailView` 다. 소유자 응답의 profile 이 공개 응답과 같은 타입이라
- * 그대로 넘기고, 소유자에게만 있는 값(meta·구독)은 자리(slot)에 요소로 덧붙인다:
+ * 그대로 넘기고, 소유자에게만 있는 값(meta)은 자리(slot)에 요소로 덧붙인다:
  *  - 히어로 위 띠: 공개 상태 · 등록일 · 최근 수정
  *  - 히어로 배지: 추천 노출 · 스팟라이트 고정(운영이 정한 노출 — 공개 상세는 그리지 않는다)
  *  - 히어로 버튼: 문의하기·좋아요·즐겨찾기 대신 수정 · 공개 페이지 보기 · 공개 주소 공유
- *  - 사이드바 맨 위: 사업자등록번호 · 국세청 인증 · 등급과 한도
- *  - 탭 아래: 등급 한도를 넘어 공개되지 않는 항목이 있다는 안내(항목 자체의 회색 표시는 몸통이 한다)
+ *  - 사이드바 맨 위: 사업자등록번호 · 국세청 인증
+ *  - 탭 아래: 저장돼 있지만 공개되지 않는 항목이 있다는 안내(항목 자체의 회색 표시는 몸통이 한다)
  *
  * 공개 상세(`/companies/[id]`)를 소유자 모드로 바꿔 쓰지 않은 이유: 그 주소는 공유되는 주소라 보는 사람에
  * 따라 화면이 달라지면 안 되고, 비공개 회사는 거기서 404 여야 한다. 내 기업 목록에서는 팝업이 아니라
@@ -59,8 +57,8 @@ export default function OwnerCompanyDetailPage({ params }: PageProps<"/companies
   useEffect(() => {
     if (!user || !valid) return;
     const controller = new AbortController();
-    Promise.all([getMyCompany(companyId, controller.signal), getSubscription(companyId, controller.signal)]).then(
-      ([detail, subscription]) => setLoaded({ id: companyId, detail, subscription }),
+    getMyCompany(companyId, controller.signal).then(
+      (detail) => setLoaded({ id: companyId, detail }),
       (e) => {
         if (controller.signal.aborted) return;
         if (e instanceof ApiError && e.isForbidden) setFailure("이 회사를 관리할 권한이 없습니다.");
@@ -92,7 +90,7 @@ export default function OwnerCompanyDetailPage({ params }: PageProps<"/companies
 
   if (!current) return <DetailSkeleton />;
 
-  const { detail, subscription } = current;
+  const { detail } = current;
   const { profile: company, meta } = detail;
   const isPublic = meta.visibility !== "PRIVATE";
   const publicUrl = `/companies/${companyId}`;
@@ -197,8 +195,8 @@ export default function OwnerCompanyDetailPage({ params }: PageProps<"/companies
       notice={
         hiddenParts.length > 0 && (
           <>
-            공개되지 않는 항목이 있습니다 — {hiddenParts.join(" · ")}. 현재 등급({subscription.effectiveGrade}) 한도를
-            넘어 저장만 돼 있고 방문자에게는 보이지 않습니다(아래 회색 표시).
+            공개되지 않는 항목이 있습니다 — {hiddenParts.join(" · ")}. 저장만 돼 있고 방문자에게는 보이지
+            않습니다(아래 회색 표시). 수정 화면에서 그 섹션을 다시 저장하면 공개됩니다.
           </>
         )
       }
@@ -223,20 +221,6 @@ export default function OwnerCompanyDetailPage({ params }: PageProps<"/companies
                     ? `인증 완료 (${formatDate(meta.businessVerifiedAt)})`
                     : "인증 완료"
                   : "미인증"}
-              </span>
-            </div>
-            <div className="srow">
-              <span className="skey">등급</span>
-              <span className="sval">
-                <GradeLabel subscription={subscription} />
-              </span>
-            </div>
-            <div className="srow">
-              <span className="skey">등급 한도</span>
-              <span className="sval">
-                분류 {subscription.limits.maxCategories} · 상세 이미지 {subscription.limits.maxDetailImages}장 ·
-                레퍼런스 이미지 {subscription.limits.maxReferenceImages}장 · 동영상{" "}
-                {subscription.limits.videoAllowed ? "허용" : "불가"}
               </span>
             </div>
           </div>

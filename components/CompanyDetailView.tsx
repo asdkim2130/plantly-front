@@ -19,8 +19,6 @@ import type { CompanyPublicResponse } from "@/types/api";
  *
  * 백엔드는 `videoUrl` 을 내려주지만 화면에서 일단 감추기로 했다. 값이 사라진 게 아니라 노출을
  * 미룬 것이라 마크업을 지우지 않고 이 스위치만 둔다 — 다시 켤 때 이 한 줄을 true 로 바꾼다.
- * (켤 때 주의: 소유자 상세는 등급과 무관하게 저장된 videoUrl 을 받는다. 그쪽에는
- * `meta.videoVisibleToPublic` 이 false 일 때 "방문자에게는 안 보임" 표시를 함께 붙여야 한다.)
  */
 const SHOW_INTRO_VIDEO = false;
 
@@ -30,7 +28,7 @@ type Props = {
   company: CompanyPublicResponse;
   /** 빵부스러기에서 회사명 앞에 오는 조각들. 생략하면 공개 상세의 "기업 찾기 / 상위 분류" */
   crumbs?: Crumb[];
-  /** 히어로 위에 붙는 띠(소유자 상세의 공개 상태·등급) */
+  /** 히어로 위에 붙는 띠(소유자 상세의 공개 상태) */
   banner?: React.ReactNode;
   /** 회사명 옆 배지 줄 끝에 덧붙는 배지 */
   heroBadges?: React.ReactNode;
@@ -242,7 +240,7 @@ export default function CompanyDetailView({
                       ) : (
                         <span
                           key={category.id}
-                          title="등급 한도를 넘어 공개되지 않는 분류"
+                          title="저장돼 있지만 공개되지 않는 분류"
                           className="tag tag-lg tagcat-dark gap-1 opacity-45"
                         >
                           <LockIcon size={11} />
@@ -292,7 +290,6 @@ export default function CompanyDetailView({
               )}
 
               {/*
-                videoUrl 은 회사 등급이 허용하지 않으면 저장돼 있어도 응답에서 null 로 온다(서버가 가린다).
                 호스트가 유튜브인지 무엇인지는 계약에 없어 embed 하지 않고 링크로만 연다.
               */}
               {SHOW_INTRO_VIDEO && company.videoUrl && (
@@ -469,7 +466,7 @@ export default function CompanyDetailView({
                       <img src={image.imageUrl} alt="" loading="lazy" className="opacity-35 grayscale" />
                       <span className="absolute top-3 left-3 inline-flex items-center gap-[5px] rounded-md bg-ink px-[9px] py-[3px] text-xs font-medium text-white">
                         <LockIcon size={12} />
-                        공개되지 않음 · 등급 한도 초과
+                        공개되지 않음
                       </span>
                     </figure>
                   ),

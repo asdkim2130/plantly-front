@@ -4,13 +4,14 @@
  * 등록 폼 H~K — 상세 이미지 · 담당자 연락처 · 프로젝트 레퍼런스 · 공개 설정.
  */
 
-import { ImageIcon, LockIcon } from "@/components/icons";
+import { ImageIcon } from "@/components/icons";
 import ImageList from "@/components/register/ImageList";
 import { ErrorLine, FieldHead, Section, TextField, uploadRuleLabel } from "@/components/register/parts";
 import { ruleValue } from "@/lib/meta";
 import { sectionId, type SectionProps } from "@/lib/register";
 
-export function GallerySection({ form, update, errors, masters, limits, hidden }: SectionProps) {
+export function GallerySection({ form, update, errors, masters, hidden }: SectionProps) {
+  const max = ruleValue(masters.constraints, "images", "maxItems");
   const hiddenCount = hidden ? form.images.filter((url) => hidden.images.has(url)).length : 0;
   return (
     <Section
@@ -19,7 +20,8 @@ export function GallerySection({ form, update, errors, masters, limits, hidden }
       title="상세 이미지"
       sub={
         <span className="font-heading text-sm text-brand-700">
-          {form.images.length} / {limits.maxDetailImages}장
+          {form.images.length}
+          {max !== undefined && ` / ${max}`}장
         </span>
       }
     >
@@ -32,7 +34,7 @@ export function GallerySection({ form, update, errors, masters, limits, hidden }
         label="상세 이미지"
         urls={form.images}
         onChange={(next) => update((f) => ({ images: next(f.images) }))}
-        max={limits.maxDetailImages}
+        max={max}
         upload={masters.upload}
         inactive={hidden?.images}
         emptyHint={
@@ -46,8 +48,8 @@ export function GallerySection({ form, update, errors, masters, limits, hidden }
       />
       {hiddenCount > 0 && (
         <p className="fhint">
-          “비공개” {hiddenCount}장은 저장돼 있지만 현재 등급 한도({limits.maxDetailImages}장)를 넘겨 공개되지 않습니다.
-          한도 안으로 줄여 저장하면 남긴 장은 모두 다시 공개됩니다.
+          “비공개” {hiddenCount}장은 저장돼 있지만 공개되지 않습니다. 이 섹션을 다시 저장하면 남긴 장은 모두
+          공개됩니다.
         </p>
       )}
       <ErrorLine message={errors.images ?? errors["images.imageUrl"]} />
@@ -111,12 +113,12 @@ export function ContactSection({ form, update, errors, masters }: SectionProps) 
   );
 }
 
-export function ReferenceSection({ form, update, errors, masters, limits, grade }: SectionProps) {
+export function ReferenceSection({ form, update, errors, masters }: SectionProps) {
   const max = (field: string) => ruleValue(masters.constraints, `references[].${field}`, "maxLength");
   const set = (patch: Partial<typeof form.reference>) =>
     update((f) => ({ reference: { ...f.reference, ...patch } }));
   const { reference } = form;
-  const imageMax = limits.maxReferenceImages;
+  const imageMax = ruleValue(masters.constraints, "references[].imageUrls", "maxItems");
 
   return (
     <Section
@@ -167,30 +169,23 @@ export function ReferenceSection({ form, update, errors, masters, limits, grade 
       </div>
       <div className="flex flex-col gap-1.5">
         <FieldHead label="레퍼런스 이미지" count={reference.imageUrls.length} max={imageMax} />
-        {imageMax > 0 ? (
-          <ImageList
-            label="레퍼런스 이미지"
-            urls={reference.imageUrls}
-            onChange={(next) => update((f) => ({ reference: { ...f.reference, imageUrls: next(f.reference.imageUrls) } }))}
-            max={imageMax}
-            upload={masters.upload}
-            emptyHint={
-              <>
-                <ImageIcon size={20} />
-                <span className="leading-normal">
-                  이미지를 끌어다 놓거나 클릭하여 파일을 선택해 주세요.
-                  <br />
-                  지원 형식: {uploadRuleLabel(masters.upload)}
-                </span>
-              </>
-            }
-          />
-        ) : (
-          <div className="upl dis h-24 flex-row gap-2.5">
-            <LockIcon size={18} strokeWidth={1.6} />
-            <span>현재 등급({grade})은 레퍼런스 이미지를 올릴 수 없습니다</span>
-          </div>
-        )}
+        <ImageList
+          label="레퍼런스 이미지"
+          urls={reference.imageUrls}
+          onChange={(next) => update((f) => ({ reference: { ...f.reference, imageUrls: next(f.reference.imageUrls) } }))}
+          max={imageMax}
+          upload={masters.upload}
+          emptyHint={
+            <>
+              <ImageIcon size={20} />
+              <span className="leading-normal">
+                이미지를 끌어다 놓거나 클릭하여 파일을 선택해 주세요.
+                <br />
+                지원 형식: {uploadRuleLabel(masters.upload)}
+              </span>
+            </>
+          }
+        />
         <ErrorLine message={errors["references.imageUrls"] ?? errors.references} />
       </div>
     </Section>

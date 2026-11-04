@@ -5,7 +5,7 @@
  *  - 제약(`/meta/constraints/{form}`) — 필수·길이·개수. 요청 DTO 의 검증 애너테이션에서 서버가 뽑는다.
  *  - 선택지(`/meta/options`) — 서버가 라벨을 소유하는 enum(trlLevel·pricingType). 비로그인 허용.
  *  - 업로드(`/meta/upload`) — 한 장당 용량·형식. 배포마다 환경변수로 바뀐다.
- * 등급별 **개수** 한도는 여기 없다. 회사마다 다른 값이라 인증 응답의 `limits` 가 준다.
+ * 컬렉션 **개수** 한도도 제약의 `maxItems` 로 온다(모든 회사에 같다).
  */
 
 import { api, uploadFile } from "@/lib/api";

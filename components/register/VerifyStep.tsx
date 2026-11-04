@@ -421,12 +421,6 @@ export default function VerifyStep({ resumeBusinessNumber, onStart, countFilledS
               ))}
             </ol>
           </div>
-          <div className="flex flex-col gap-2 rounded-xl border border-line px-[18px] py-4">
-            <div className="kick">인증 후 정해지는 것</div>
-            <p className="fhint">
-              등급에 따라 등록 가능한 카테고리 · 이미지 수가 정해집니다. 인증 후 폼 상단에서 확인할 수 있습니다.
-            </p>
-          </div>
         </aside>
       </div>
     </div>

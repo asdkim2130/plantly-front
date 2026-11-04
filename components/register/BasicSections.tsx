@@ -5,7 +5,7 @@
  */
 
 import { useState } from "react";
-import { ImageIcon, LockIcon, SearchIcon } from "@/components/icons";
+import { ImageIcon, SearchIcon } from "@/components/icons";
 import {
   ErrorLine,
   FieldHead,
@@ -354,7 +354,7 @@ function ImageActions({ onReplace, onRemove }: { onReplace: () => void; onRemove
   );
 }
 
-export function BusinessSection({ form, update, errors, masters, limits, grade, mode }: SectionProps) {
+export function BusinessSection({ form, update, errors, masters, mode }: SectionProps) {
   // 수정에서는 고른 걸 다시 눌러도 풀리지 않는다 — PATCH 가 enum 을 비우지 못해 저장해도 아무 일이 없다.
   const allowClear = mode !== "edit";
   const max = (field: string) => ruleValue(masters.constraints, field, "maxLength");
@@ -398,38 +398,15 @@ export function BusinessSection({ form, update, errors, masters, limits, grade, 
         placeholder="보증 기간, A/S 방식, 대응 시간"
         error={errors.asInfo}
       />
-      {/*
-        동영상은 등급이 막아도 서버가 저장은 받는다(공개 조회에서만 가린다). 그래도 입력란을 열어 두면
-        "넣었는데 안 보인다"가 되므로 등급이 허용할 때만 칸을 준다.
-      */}
-      {limits.videoAllowed ? (
-        <TextField
-          id="f-videoUrl"
-          label="소개 동영상"
-          value={form.videoUrl}
-          onChange={(videoUrl) => update({ videoUrl })}
-          max={max("videoUrl")}
-          placeholder="YouTube · Vimeo 링크"
-          error={errors.videoUrl}
-        />
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <span className="flab text-faint">
-            <LockIcon size={13} strokeWidth={1.6} />
-            소개 동영상
-          </span>
-          <div className="rounded-lg border border-dashed border-line bg-field px-3.5 py-3 text-[13px] leading-normal text-muted">
-            현재 등급(<b className="font-medium">{grade}</b>)에서는 소개 동영상을 넣을 수 없습니다.
-            {form.videoUrl && (
-              <>
-                {" "}
-                저장된 링크(<span className="break-all">{form.videoUrl}</span>)는 지금 공개되지 않으며, 등급이 오르면
-                다시 보입니다.
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      <TextField
+        id="f-videoUrl"
+        label="소개 동영상"
+        value={form.videoUrl}
+        onChange={(videoUrl) => update({ videoUrl })}
+        max={max("videoUrl")}
+        placeholder="YouTube · Vimeo 링크"
+        error={errors.videoUrl}
+      />
     </Section>
   );
 }

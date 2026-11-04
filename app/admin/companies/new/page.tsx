@@ -6,10 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/components/SessionProvider";
 import DoneStep from "@/components/register/DoneStep";
 import RegisterForm from "@/components/register/RegisterForm";
-import { ruleValue } from "@/lib/meta";
 import { loadRegisterMasters } from "@/lib/registerMasters";
 import { emptyForm, type RegisterForm as Form, type RegisterMasters } from "@/lib/register";
-import type { GradeLimits } from "@/types/api";
 
 /**
  * 기업 등록(관리자) — `POST /admin/companies`. 화면은 자가등록(`/companies/new`)의 작성 단계와 같은 폼이다
@@ -17,11 +15,6 @@ import type { GradeLimits } from "@/types/api";
  *
  * 국세청 인증이 없어 **인증 단계 없이 바로 작성 화면이 뜬다.** 단계는 작성 → 완료 둘이다.
  * 임시저장이 없어 새로고침하면 처음부터다(초안은 국세청 인증을 받은 번호에만 저장된다).
- *
- * 등급 한도는 인증 결과가 아니라 등록 폼 제약(`company-create`)의 천장값이다 — 관리자 등록 회사는 구독이
- * ADMIN_EXEMPT 로 만들어져 등급 한도 정책을 건너뛰고, 남는 상한이 DTO 의 천장(카테고리 10 · 상세 이미지 30 ·
- * 레퍼런스 이미지 10)이다. 숫자를 화면에 박지 않고 제약 응답에서 읽는다. 제약을 못 받으면 한도를 알 수 없어
- * 폼을 열지 않는다.
  */
 export default function AdminCompanyCreatePage() {
   const { user, loading } = useSession();
@@ -73,9 +66,7 @@ export default function AdminCompanyCreatePage() {
     );
   }
 
-  const limits = masters && exemptLimits(masters);
-
-  if (mastersError || (masters && !limits)) {
+  if (mastersError) {
     return (
       <div className="flex flex-col items-center gap-3 px-4 py-20 text-center sm:px-[30px]">
         <p className="text-sm text-muted">등록 화면에 필요한 선택지·제약을 불러오지 못했습니다.</p>
@@ -89,7 +80,7 @@ export default function AdminCompanyCreatePage() {
     );
   }
 
-  if (!masters || !limits) {
+  if (!masters) {
     return (
       <div className="flex flex-col gap-4 px-4 py-10 sm:px-[30px]" aria-busy>
         <span className="skel h-8 w-48" />
@@ -118,7 +109,6 @@ export default function AdminCompanyCreatePage() {
       // "다른 기업 등록" 으로 돌아오면 폼 상태를 통째로 새로 만든다.
       key={step.round}
       kind="admin"
-      limits={limits}
       initialForm={emptyForm()}
       masters={masters}
       reloadMasters={reloadMasters}
@@ -128,15 +118,4 @@ export default function AdminCompanyCreatePage() {
       }}
     />
   );
-}
-
-/** 한도 면제 회사의 상한 = 등록 폼 제약의 천장값. 하나라도 없으면 null(폼을 열지 않는다) */
-function exemptLimits(masters: RegisterMasters): GradeLimits | null {
-  const c = masters.constraints;
-  const maxCategories = ruleValue(c, "categoryIds", "maxItems");
-  const maxDetailImages = ruleValue(c, "images", "maxItems");
-  const maxReferenceImages = ruleValue(c, "references[].imageUrls", "maxItems");
-  if (maxCategories === undefined || maxDetailImages === undefined || maxReferenceImages === undefined) return null;
-  // 동영상은 저장이 등급과 무관하고, 면제 회사는 공개 노출도 막히지 않는다.
-  return { maxCategories, maxDetailImages, maxReferenceImages, videoAllowed: true };
 }

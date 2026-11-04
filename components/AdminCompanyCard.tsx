@@ -26,16 +26,14 @@ type Props = {
 
 /**
  * 관리자 기업 목록의 카드. 몸통은 내 기업 카드와 같은 CoverCard 이고(디자인 "플랜틀리 내 기업 목록"), 자리만 관리자용으로 바꾼다.
- *  - 커버 위: 삭제됨 · 비공개 · 에디터 선정 · 등급 / 오른쪽 "⋯" 메뉴(공개 페이지 · 공개 전환 · 삭제 또는 복구)
+ *  - 커버 위: 삭제됨 · 비공개 · 에디터 선정 / 오른쪽 "⋯" 메뉴(공개 페이지 · 공개 전환 · 삭제 또는 복구)
  *  - 주소 뒤: 등록일 · 최근 수정
  *  - 아랫단: **추천 노출 · 스팟라이트 고정 스위치**(클라이언트 요구 — 목록에서 바로 켜고 끈다) + 국세청 인증 · 등록 출처
  *
  * 카드를 누르면 관리자 상세(`/admin/companies/{id}`)로 간다. 소유자 상세(`/manage`)는 멤버만 열려 관리자에게 403 이다.
  * "수정" 은 ⋯ 메뉴 맨 위에 둔다(관리자 수정 `/admin/companies/{id}/edit`). 아랫단은 스위치 자리라 내 기업 카드처럼 꺼내지 않았다.
  *
- * 두 스위치는 뜻이 다르다. 추천은 순수 관리자 큐레이션이라 끄면 추천 레일에서 바로 빠진다. 스팟라이트는 **수동 고정**이라
- * 유료 활성 구독(PREMIUM·ENTERPRISE)은 꺼져 있어도 요금제로 레일에 오른다 — 그 경우 스위치 옆에 "요금제로 노출"을 붙여
- * 꺼도 안 사라지는 이유를 보여준다(판정 규칙은 백엔드 ShowcaseCardRepository 의 SPOTLIGHT_SQL 과 같게 맞춘 표시용 사본이다).
+ * 두 스위치 모두 관리자 큐레이션이다 — 추천을 켜면 추천 레일에, 스팟라이트 고정을 켜면 스팟라이트 레일에 오른다.
  */
 export default function AdminCompanyCard({
   company,
@@ -48,12 +46,6 @@ export default function AdminCompanyCard({
   onRestore,
 }: Props) {
   const isPublic = company.visibility !== "PRIVATE";
-  // 요금제 스팟라이트 자격. effectiveGrade 가 이미 만료를 반영하므로 만료일은 다시 보지 않는다.
-  const paidSpotlight =
-    company.status === "ACTIVE" &&
-    (company.effectiveGrade === "PREMIUM" || company.effectiveGrade === "ENTERPRISE");
-  const gradeNote =
-    company.status === "TRIAL" ? " 체험" : company.status === "ADMIN_EXEMPT" ? " 면제" : "";
 
   return (
     <CoverCard
@@ -80,12 +72,6 @@ export default function AdminCompanyCard({
             <span className="cur">
               <StarIcon size={11} />
               에디터 선정
-            </span>
-          )}
-          {company.effectiveGrade && (
-            <span className="rounded-md bg-white/95 px-2 py-[3px] font-heading text-xs tracking-[0.06em] whitespace-nowrap text-brand-800">
-              {company.effectiveGrade}
-              {gradeNote}
             </span>
           )}
         </>
@@ -123,14 +109,6 @@ export default function AdminCompanyCard({
               disabled={company.deleted || busy !== null}
               onToggle={() => onToggleFlag("spotlight")}
             />
-            {paidSpotlight && !company.spotlight && (
-              <span
-                className="text-xs whitespace-nowrap text-brand-700"
-                title="유료 활성 구독(PREMIUM·ENTERPRISE)은 고정하지 않아도 스팟라이트 후보에 오릅니다"
-              >
-                요금제로 노출
-              </span>
-            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
             {company.businessVerified ? (
