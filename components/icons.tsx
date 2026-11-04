@@ -323,16 +323,6 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
-/** 잠긴 · 공개되지 않는 항목 */
-export function LockIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <rect x="5" y="11" width="14" height="10" rx="1.5" />
-      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-    </Svg>
-  );
-}
-
 /** 국세청 인증 완료 배지 — 방패 + 체크 */
 export function ShieldCheckIcon(props: IconProps) {
   return (

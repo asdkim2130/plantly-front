@@ -10,9 +10,8 @@ import { ErrorLine, FieldHead, Section, TextField, uploadRuleLabel } from "@/com
 import { ruleValue } from "@/lib/meta";
 import { sectionId, type SectionProps } from "@/lib/register";
 
-export function GallerySection({ form, update, errors, masters, hidden }: SectionProps) {
+export function GallerySection({ form, update, errors, masters }: SectionProps) {
   const max = ruleValue(masters.constraints, "images", "maxItems");
-  const hiddenCount = hidden ? form.images.filter((url) => hidden.images.has(url)).length : 0;
   return (
     <Section
       id={sectionId("H")}
@@ -36,7 +35,6 @@ export function GallerySection({ form, update, errors, masters, hidden }: Sectio
         onChange={(next) => update((f) => ({ images: next(f.images) }))}
         max={max}
         upload={masters.upload}
-        inactive={hidden?.images}
         emptyHint={
           <>
             <ImageIcon size={20} />
@@ -46,12 +44,6 @@ export function GallerySection({ form, update, errors, masters, hidden }: Sectio
           </>
         }
       />
-      {hiddenCount > 0 && (
-        <p className="fhint">
-          “비공개” {hiddenCount}장은 저장돼 있지만 공개되지 않습니다. 이 섹션을 다시 저장하면 남긴 장은 모두
-          공개됩니다.
-        </p>
-      )}
       <ErrorLine message={errors.images ?? errors["images.imageUrl"]} />
     </Section>
   );

@@ -15,7 +15,7 @@ import type { CompanyDetailResponse } from "@/types/api";
 /**
  * 기업정보 수정(소유자). 등록 화면의 섹션을 그대로 쓰고 저장만 섹션별로 한다 — `components/register/EditForm.tsx`.
  *
- * 두 가지를 함께 받는다: 소유자 상세(`/private`, 숨겨진 항목·우편번호·레퍼런스 이미지 전부 포함),
+ * 두 가지를 함께 받는다: 소유자 상세(`/private`, 우편번호·레퍼런스 이미지 전부 포함),
  * 폼 재료(선택지·제약 — 개수 한도도 여기서 온다). 소유자가 아니면 서버가 403 을 준다.
  */
 export default function CompanyEditPage({ params }: PageProps<"/companies/[id]/edit">) {

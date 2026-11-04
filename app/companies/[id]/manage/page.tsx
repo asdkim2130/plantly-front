@@ -30,7 +30,6 @@ type Loaded = {
  *  - 히어로 배지: 추천 노출 · 스팟라이트 고정(운영이 정한 노출 — 공개 상세는 그리지 않는다)
  *  - 히어로 버튼: 문의하기·좋아요·즐겨찾기 대신 수정 · 공개 페이지 보기 · 공개 주소 공유
  *  - 사이드바 맨 위: 사업자등록번호 · 국세청 인증
- *  - 탭 아래: 저장돼 있지만 공개되지 않는 항목이 있다는 안내(항목 자체의 회색 표시는 몸통이 한다)
  *
  * 공개 상세(`/companies/[id]`)를 소유자 모드로 바꿔 쓰지 않은 이유: 그 주소는 공유되는 주소라 보는 사람에
  * 따라 화면이 달라지면 안 되고, 비공개 회사는 거기서 404 여야 한다. 내 기업 목록에서는 팝업이 아니라
@@ -94,13 +93,6 @@ export default function OwnerCompanyDetailPage({ params }: PageProps<"/companies
   const { profile: company, meta } = detail;
   const isPublic = meta.visibility !== "PRIVATE";
   const publicUrl = `/companies/${companyId}`;
-
-  const hiddenCategories = company.categories.filter((category) => !category.active).length;
-  const hiddenImages = company.galleryImages.filter((image) => !image.active).length;
-  const hiddenParts = [
-    hiddenCategories > 0 && `분류 ${hiddenCategories}개`,
-    hiddenImages > 0 && `상세 이미지 ${hiddenImages}장`,
-  ].filter((part): part is string => !!part);
 
   // 에디터 선정(verified)·사업자 확인은 몸통이 이미 그린다. 운영이 정한 노출 둘만 소유자에게 더 보여준다.
   const exposure = [meta.featured && "추천 노출", meta.spotlight && "스팟라이트 고정"].filter(
@@ -191,14 +183,6 @@ export default function OwnerCompanyDetailPage({ params }: PageProps<"/companies
               : "공개로 전환하면 검색과 메인에 다시 나옵니다(내 기업 목록의 ⋯ 메뉴)."}
           </p>
         </>
-      }
-      notice={
-        hiddenParts.length > 0 && (
-          <>
-            공개되지 않는 항목이 있습니다 — {hiddenParts.join(" · ")}. 저장만 돼 있고 방문자에게는 보이지
-            않습니다(아래 회색 표시). 수정 화면에서 그 섹션을 다시 저장하면 공개됩니다.
-          </>
-        )
       }
       sidebarTop={
         <div className="blueprint flex flex-col gap-3 bg-white p-5">

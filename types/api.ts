@@ -219,14 +219,6 @@ export type GalleryImageResponse = {
   imageUrl: string;
   imageType: ImageType;
   displayOrder: number;
-  /**
-   * 공개 노출 여부. 저장은 살아 있지만 등급 한도를 넘겨 가려진 상태를 뜻한다(삭제가 아니다).
-   *
-   * **공개 조회에서는 항상 true 다** — 꺼진 이미지는 응답에서 아예 빠지기 때문이다.
-   * `false` 가 나타나는 건 소유자/관리자 조회뿐이고, 그쪽 화면은 "저장돼 있지만 지금은 공개되지 않는
-   * 항목"을 회색으로 구분하는 근거로 쓴다. 여기서 지워버리면 소유자가 데이터가 날아갔다고 오해한다.
-   */
-  active: boolean;
 };
 
 export type ProjectReferenceResponse = {
@@ -243,8 +235,6 @@ export type CategoryRef = {
   slug: string;
   depth: number;
   iconUrl: string | null;
-  /** `GalleryImageResponse.active` 와 같은 규약 — 공개 조회에서는 항상 true, 소유자/관리자 조회에서만 false */
-  active: boolean;
 };
 
 export type CertificationRef = {
@@ -333,7 +323,6 @@ export type CompanyPublicResponse = {
 /**
  * GET /api/v1/companies/{id}/private — 소유자 전용 상세. 공개 응답(profile)에 운영 정보(meta)를 덧붙인 합성이다.
  * profile 은 공개 응답 그대로라, 공개에서 일부러 줄인 값(우편번호 · 레퍼런스 이미지 전체)은 meta 로 따로 온다.
- * 꺼진(등급 초과로 숨겨진) 카테고리·갤러리 이미지도 `active: false` 로 함께 온다.
  */
 export type CompanyDetailResponse = {
   profile: CompanyPublicResponse;
@@ -358,7 +347,7 @@ export type CompanyManagementMeta = {
   deleted: boolean;
   visibility: CompanyVisibility;
   /**
-   * 대표 레퍼런스의 이미지 전부(꺼진 것 포함, 표시 순서). profile.representativeReference 는 표지 한 장뿐이라,
+   * 대표 레퍼런스의 이미지 전부(표시 순서). profile.representativeReference 는 표지 한 장뿐이라,
    * 레퍼런스 전체 교체(PUT) 전에 수정 화면은 이 목록으로 채워야 나머지 장이 지워지지 않는다.
    */
   representativeReferenceImages: GalleryImageResponse[];
