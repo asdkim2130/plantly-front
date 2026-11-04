@@ -5,7 +5,7 @@ import { Fragment } from "react";
 import Cover from "@/components/Cover";
 import DetailTabs, { type DetailTab, TAB_BAR_HEIGHT } from "@/components/DetailTabs";
 import Logo from "@/components/Logo";
-import { FactoryIcon, LockIcon, PinIcon, PlayIcon, VerifiedIcon } from "@/components/icons";
+import { FactoryIcon, PinIcon, PlayIcon, VerifiedIcon } from "@/components/icons";
 import {
   CERTIFICATION_TYPE_LABEL,
   CERTIFICATION_TYPE_ORDER,
@@ -54,9 +54,7 @@ type Props = {
  * "디자인과 API가 어긋나는 곳" 표에 적어 둔다.
  *
  * 두 화면은 같은 `CompanyPublicResponse` 를 그린다(소유자 응답의 profile 이 공개 응답과 같은 타입이다).
- * 다른 것은 자리(slot)뿐이고, 하나만 데이터에서 갈린다 — 소유자 응답에는 등급 한도를 넘어 공개되지 않는
- * 분류·갤러리 이미지가 `active: false` 로 섞여 오고, 이 몸통은 그걸 회색 + 자물쇠로 구분해 그린다.
- * 공개 응답에서는 꺼진 항목이 아예 빠져 오므로 이 분기는 공개 상세에서 일어나지 않는다.
+ * 다른 것은 자리(slot)뿐이고, 몸통이 그리는 데이터는 같다.
  */
 export default function CompanyDetailView({
   company,
@@ -91,8 +89,6 @@ export default function CompanyDetailView({
   const hasProject = Boolean(company.representativeReference);
   const hasGallery = company.galleryImages.length > 0;
   const contact = company.representativeContact;
-
-  const hiddenImages = company.galleryImages.filter((image) => !image.active).length;
 
   // 빵부스러기에 쓸 상위 분류. 정렬이 보장되지 않으므로 depth 로 직접 고른다.
   const topCategory = company.categories.reduce<(typeof company.categories)[number] | null>(
@@ -228,26 +224,14 @@ export default function CompanyDetailView({
                 {/*
                   정식 분류. 업종(어떤 산업인가)과 분류(무엇을 다루는가)는 다른 축이라 줄을 나눈다.
                   남색 배경 위라 아웃라인 칩도 밝은 파랑 계열(tagcat-dark)로 뒤집는다.
-                  꺼진 분류(소유자 응답에만 있다)는 흐리게 + 자물쇠 — 저장은 돼 있지만 방문자에게는 안 보인다.
                 */}
                 {company.categories.length > 0 && (
                   <div className="flex flex-wrap items-center gap-[7px]">
-                    {company.categories.map((category) =>
-                      category.active ? (
-                        <span key={category.id} className="tag tag-lg tagcat-dark">
-                          {category.categoryName}
-                        </span>
-                      ) : (
-                        <span
-                          key={category.id}
-                          title="저장돼 있지만 공개되지 않는 분류"
-                          className="tag tag-lg tagcat-dark gap-1 opacity-45"
-                        >
-                          <LockIcon size={11} />
-                          {category.categoryName}
-                        </span>
-                      ),
-                    )}
+                    {company.categories.map((category) => (
+                      <span key={category.id} className="tag tag-lg tagcat-dark">
+                        {category.categoryName}
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
@@ -437,10 +421,7 @@ export default function CompanyDetailView({
             >
               <div className="flex items-baseline gap-2.5">
                 <h2 className="text-[23px]">상세 이미지</h2>
-                <span className="kick">
-                  {company.galleryImages.length}장
-                  {hiddenImages > 0 && ` · 비공개 ${hiddenImages}장`}
-                </span>
+                <span className="kick">{company.galleryImages.length}장</span>
               </div>
 
               {/*
@@ -453,24 +434,12 @@ export default function CompanyDetailView({
                 한 겹으로 합치는 건 .gshot + .gshot 쪽이다.
               */}
               <div className="flex flex-col">
-                {company.galleryImages.map((image) =>
-                  image.active ? (
-                    <figure key={image.imageUrl} className="gshot">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={image.imageUrl} alt="" loading="lazy" />
-                    </figure>
-                  ) : (
-                    // 꺼진 사진(소유자 응답에만 있다). 지우지 않고 흐리게 남겨야 소유자가 "사진이 날아갔다"고 오해하지 않는다.
-                    <figure key={image.imageUrl} className="gshot relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={image.imageUrl} alt="" loading="lazy" className="opacity-35 grayscale" />
-                      <span className="absolute top-3 left-3 inline-flex items-center gap-[5px] rounded-md bg-ink px-[9px] py-[3px] text-xs font-medium text-white">
-                        <LockIcon size={12} />
-                        공개되지 않음
-                      </span>
-                    </figure>
-                  ),
-                )}
+                {company.galleryImages.map((image) => (
+                  <figure key={image.imageUrl} className="gshot">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image.imageUrl} alt="" loading="lazy" />
+                  </figure>
+                ))}
               </div>
             </section>
           )}

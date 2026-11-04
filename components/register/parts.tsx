@@ -118,17 +118,14 @@ export function RemovableChip({
   prefix,
   onRemove,
   gone,
-  muted,
 }: {
   children: React.ReactNode;
   prefix?: string;
   onRemove: () => void;
   gone?: boolean;
-  /** 저장돼 있지만 공개되지 않는 항목(등급 초과) */
-  muted?: boolean;
 }) {
   return (
-    <span className={`tchip ${gone ? "gone" : ""} ${muted ? "opacity-55 grayscale" : ""}`}>
+    <span className={`tchip ${gone ? "gone" : ""}`}>
       {prefix && <small>{prefix}</small>}
       {children}
       <button type="button" className="tx" onClick={onRemove} aria-label="빼기">

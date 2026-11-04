@@ -28,7 +28,7 @@ function indexCategories(roots: CategoryPublicResponse[]) {
   return index;
 }
 
-export default function ClassifySection({ form, update, errors, masters, removed, hidden }: SectionProps) {
+export default function ClassifySection({ form, update, errors, masters, removed }: SectionProps) {
   const roots = masters.categories;
   const index = useMemo(() => indexCategories(roots), [roots]);
 
@@ -101,26 +101,18 @@ export default function ClassifySection({ form, update, errors, masters, removed
           {selected.map((id) => {
             const entry = index.get(id);
             const gone = removed.categoryIds?.get(id);
-            const off = hidden?.categoryIds.has(id);
             return (
               <RemovableChip
                 key={id}
                 gone={!entry}
-                muted={off}
                 prefix={entry?.path.join(" › ")}
                 onRemove={() => update((f) => ({ categoryIds: f.categoryIds.filter((x) => x !== id) }))}
               >
                 {entry ? entry.node.categoryName : `${gone ?? `#${id}`} · 삭제됨`}
-                {entry && off && <small> · 비공개</small>}
               </RemovableChip>
             );
           })}
         </div>
-        {hidden && selected.some((id) => hidden.categoryIds.has(id)) && (
-          <span className="fhint">
-            “비공개” 표시는 저장돼 있지만 공개되지 않는 항목입니다. 이 섹션을 다시 저장하면 모두 공개됩니다.
-          </span>
-        )}
         {full && (
           <span className="fhint text-brand-700">
             최대 {maxCategories}개까지 선택할 수 있습니다. 다른 항목을 선택하려면 기존 항목 중 하나를

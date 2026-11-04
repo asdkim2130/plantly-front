@@ -129,7 +129,7 @@ export function createCompany(payload: MyCompanyCreateRequest) {
 // ===== 회사 수정(소유자) =====
 // 본체는 sparse PATCH 하나, 컬렉션은 각자 전체 교체 PUT 이다 — 한 번에 묶는 트랜잭션이 없어 화면은 섹션별로 저장한다.
 
-/** 소유자 전용 상세. 꺼진 항목(active=false)과 수정 화면용 값(meta.postalCode · 레퍼런스 이미지 전부)이 함께 온다. */
+/** 소유자 전용 상세. 수정 화면용 값(meta.postalCode · 레퍼런스 이미지 전부)이 함께 온다. */
 export function getMyCompany(id: number, signal?: AbortSignal) {
   return api.get<CompanyDetailResponse>(`/companies/${id}/private`, undefined, signal);
 }

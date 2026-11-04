@@ -6,8 +6,7 @@
  * - 섹션마다 "저장 안 된 변경"을 저장값과 견줘 판단하고, 바뀐 섹션 아래에만 저장 줄이 붙는다(SectionFooterContext).
  * - 오류는 그 섹션에 붙는다. 화면 검증은 그 섹션 저장을 한 번 눌렀을 때부터 입력마다 다시 돌고, 서버가 준
  *   위반은 "그때 그 칸의 값"을 들고 있다가 값이 바뀌면 지운다(등록 화면과 같은 방식).
- * - 개수 한도는 폼 제약의 maxItems 다(모든 회사에 같다). 숨겨진 항목(active=false)은 회색으로 그리고,
- *   그 컬렉션을 저장하면 서버가 전부 새로 만들어 다시 공개되므로 표시를 지운다.
+ * - 개수 한도는 폼 제약의 maxItems 다(모든 회사에 같다).
  * - 대표자명·개업일자는 국세청 인증 회사면 일반 수정이 막혀 있어 남색 띠에 읽기 전용으로 두고 "재인증"으로만 바꾼다.
  *
  * ── 관리자 수정(`admin`) ──
@@ -54,7 +53,6 @@ import {
   sortErrors,
   validate,
   type FormError,
-  type HiddenItems,
   type RegisterForm as Form,
   type RegisterMasters,
   type SectionKey,
@@ -84,12 +82,6 @@ export default function EditForm({ companyId, detail, initialForm, masters, admi
   const [form, setForm] = useState<Form>(initialForm);
   /** 서버에 저장돼 있는 값. 섹션 저장이 성공할 때마다 그 칸만 옮겨 온다 */
   const [saved, setSaved] = useState<Form>(initialForm);
-
-  // 숨겨진 항목(active=false). 그 컬렉션을 저장하면 서버가 전부 새로 만들어(active=true) 표시가 의미를 잃는다.
-  const [hidden, setHidden] = useState<HiddenItems>(() => ({
-    categoryIds: new Set(detail.profile.categories.filter((c) => !c.active).map((c) => c.id)),
-    images: new Set(detail.profile.galleryImages.filter((image) => !image.active).map((image) => image.imageUrl)),
-  }));
 
   // 재인증으로 바뀔 수 있는 신원 두 칸
   const [identity, setIdentity] = useState({
@@ -175,8 +167,6 @@ export default function EditForm({ companyId, detail, initialForm, masters, admi
       try {
         await op.run();
         setSaved((prev) => ({ ...prev, ...Object.fromEntries(op.fields.map((field) => [field, snapshot[field]])) }));
-        if (op.collection === "categories") setHidden((h) => ({ ...h, categoryIds: new Set() }));
-        if (op.collection === "images") setHidden((h) => ({ ...h, images: new Set() }));
       } catch (e) {
         setSavingKey(null);
         if (e instanceof ApiError && e.isUnauthorized) {
@@ -300,7 +290,6 @@ export default function EditForm({ companyId, detail, initialForm, masters, admi
     masters,
     removed: {},
     mode: "edit",
-    hidden,
     identity: identityEditable ? "edit" : undefined,
   };
   const isPublic = saved.visibility === "PUBLIC";

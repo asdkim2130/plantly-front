@@ -60,8 +60,6 @@ export type SectionProps = {
    * 공개 설정 안내 문구가 "발행하면"이 아니라 "저장하면"이다. 생략하면 create.
    */
   mode?: "create" | "edit";
-  /** 수정 화면에서만: 저장돼 있지만 등급 한도를 넘겨 공개되지 않는 항목(회색으로 그린다) */
-  hidden?: HiddenItems;
   /**
    * 관리자 화면에서만: 신원을 기본 정보 섹션에서 직접 입력받는다. 자가등록·소유자 수정은 국세청 인증본이 채워 칸이 없다.
    *  - "create"(관리자 등록): 사업자번호 · 대표자명 · 개업일자
@@ -69,12 +67,6 @@ export type SectionProps = {
    */
   identity?: "create" | "edit";
 };
-
-/**
- * 등급 초과로 숨겨진(active=false) 항목. 지운 게 아니라 저장은 살아 있다 — 회색으로 구분해야
- * 소유자가 "데이터가 날아갔다"고 오해하지 않는다. 레퍼런스 이미지는 서버가 개별 on/off 를 아직 주지 않는다.
- */
-export type HiddenItems = { categoryIds: Set<number>; images: Set<string> };
 
 export type RemovedSelections = Partial<Record<"categoryIds" | "industryIds" | "certificationIds" | "countryIds" | "domesticRegionIds", Map<number, string>>>;
 

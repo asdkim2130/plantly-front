@@ -91,13 +91,6 @@ export default function AdminCompanyDetailPage({ params }: PageProps<"/admin/com
   const isPublic = meta.visibility !== "PRIVATE";
   const hasPublicPage = isPublic && !meta.deleted;
 
-  const hiddenCategories = company.categories.filter((category) => !category.active).length;
-  const hiddenImages = company.galleryImages.filter((image) => !image.active).length;
-  const hiddenParts = [
-    hiddenCategories > 0 && `분류 ${hiddenCategories}개`,
-    hiddenImages > 0 && `상세 이미지 ${hiddenImages}장`,
-  ].filter((part): part is string => !!part);
-
   // 에디터 선정(verified)·사업자 확인은 몸통이 이미 그린다. 운영이 정한 노출 둘만 더 보여준다.
   const exposure = [meta.featured && "추천 노출", meta.spotlight && "스팟라이트 고정"].filter(
     (label): label is string => !!label,
@@ -187,14 +180,6 @@ export default function AdminCompanyDetailPage({ params }: PageProps<"/admin/com
                 : "추천 노출·스팟라이트 고정은 기업 관리 목록에서 켜고 끕니다."}
           </p>
         </>
-      }
-      notice={
-        hiddenParts.length > 0 && (
-          <>
-            공개되지 않는 항목이 있습니다 — {hiddenParts.join(" · ")}. 저장만 돼 있고 방문자에게는 보이지
-            않습니다(아래 회색 표시). 수정 화면에서 그 섹션을 다시 저장하면 공개됩니다.
-          </>
-        )
       }
       sidebarTop={
         <div className="blueprint flex flex-col gap-3 bg-white p-5">
