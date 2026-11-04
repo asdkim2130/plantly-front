@@ -323,7 +323,7 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
-/** 등급이 막은 입력(동영상·레퍼런스 이미지) */
+/** 잠긴 · 공개되지 않는 항목 */
 export function LockIcon(props: IconProps) {
   return (
     <Svg {...props}>

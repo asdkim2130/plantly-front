@@ -6,7 +6,6 @@ import type { SaveApi } from "@/lib/companyEdit";
 import type {
   AdminCompanyFlagsRequest,
   AdminCompanyQuery,
-  AdminCompanySubscriptionResponse,
   AdminCompanySummary,
   CompanyCreateRequest,
   CompanyDetailResponse,
@@ -17,7 +16,7 @@ import type {
 } from "@/types/api";
 
 /**
- * 관리자 등록. 국세청 인증 없이 바로 만들어지고, 소유자 미연동 · 등급 한도 면제(ADMIN_EXEMPT)로 시작한다.
+ * 관리자 등록. 국세청 인증 없이 바로 만들어지고, 소유자 미연동으로 시작한다.
  * 검증 실패는 자가등록과 같은 모양(`errors[]`)으로 온다.
  */
 export function createAdminCompany(payload: CompanyCreateRequest) {
@@ -32,11 +31,6 @@ export function listAdminCompanies(query: AdminCompanyQuery = {}, signal?: Abort
 /** 관리자 상세. 소유자 상세와 같은 응답(profile + meta)이고, 삭제된 회사도 열린다. */
 export function getAdminCompany(id: number, signal?: AbortSignal) {
   return api.get<CompanyDetailResponse>(`/admin/companies/${id}`, undefined, signal);
-}
-
-/** 관리자 구독 조회. 소유자용과 달리 한도(limits)는 없다. */
-export function getAdminSubscription(id: number, signal?: AbortSignal) {
-  return api.get<AdminCompanySubscriptionResponse>(`/admin/companies/${id}/subscription`, undefined, signal);
 }
 
 /** 운영 플래그(에디터 선정·추천·스팟라이트 고정). 보낸 키만 목표값으로 바뀐다(멱등). */

@@ -44,8 +44,6 @@ export type IdResponse = { id: number };
 
 // ===== enum (백엔드 enum 이름 그대로 문자열로 내려온다) =====
 
-export type CompanyGrade = "FREE" | "BASIC" | "STANDARD" | "PREMIUM" | "ENTERPRISE";
-export type SubscriptionStatus = "ACTIVE" | "TRIAL" | "ADMIN_EXEMPT";
 export type CompanyVisibility = "PUBLIC" | "PRIVATE";
 export type RegistrationSource = "USER" | "ADMIN";
 export type TrlLevel = "PROTOTYPE" | "MASS_PRODUCTION" | "GLOBAL_STANDARD";
@@ -359,8 +357,6 @@ export type CompanyManagementMeta = {
   spotlight: boolean;
   deleted: boolean;
   visibility: CompanyVisibility;
-  /** false = 동영상이 저장돼 있지만 등급이 낮아 공개 화면에서 가려진 상태 */
-  videoVisibleToPublic: boolean;
   /**
    * 대표 레퍼런스의 이미지 전부(꺼진 것 포함, 표시 순서). profile.representativeReference 는 표지 한 장뿐이라,
    * 레퍼런스 전체 교체(PUT) 전에 수정 화면은 이 목록으로 채워야 나머지 장이 지워지지 않는다.
@@ -422,7 +418,7 @@ export type AdminCompanySummary = CardCompany & {
   businessVerified: boolean;
   /** 추천 레일 노출. 순수 관리자 큐레이션이라 끄면 바로 레일에서 빠진다 */
   featured: boolean;
-  /** 스팟라이트 **수동 고정**. 유료 등급 회사는 false 여도 구독만으로 스팟라이트에 오른다 */
+  /** 스팟라이트 **수동 고정** */
   spotlight: boolean;
   deleted: boolean;
   visibility: CompanyVisibility;
@@ -431,10 +427,6 @@ export type AdminCompanySummary = CardCompany & {
   registrationSource: RegistrationSource;
   createdAt: string;
   updatedAt: string;
-  /** 구독이 없으면(있어선 안 되지만) 셋 다 null */
-  effectiveGrade: CompanyGrade | null;
-  status: SubscriptionStatus | null;
-  expiresAt: string | null;
   industryNames: string[];
 };
 
@@ -456,37 +448,6 @@ export type AdminCompanyFlagsRequest = Partial<{
   featured: boolean;
   spotlight: boolean;
 }>;
-
-/** GET /api/v1/admin/companies/{id}/subscription — 소유자용 구독 응답 + 감사 시각 */
-export type AdminCompanySubscriptionResponse = {
-  companyId: number;
-  companyName: string;
-  grade: CompanyGrade;
-  effectiveGrade: CompanyGrade;
-  status: SubscriptionStatus;
-  startedAt: string;
-  expiresAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  /** effectiveGrade 의 입력 한도. 한도는 행위자가 아니라 회사 구독이 정해 관리자 수정도 같은 한도에 걸린다 */
-  limits: GradeLimits;
-};
-
-/** GET /api/v1/companies/{id}/subscription — 소유자 전용 */
-export type CompanySubscriptionResponse = {
-  companyId: number;
-  companyName: string;
-  /** 계약(저장)된 등급 */
-  grade: CompanyGrade;
-  /** 만료·체험을 반영해 서버가 파생한 실제 유효 등급. 화면의 등급 표시·한도 안내는 이 값을 쓴다 */
-  effectiveGrade: CompanyGrade;
-  status: SubscriptionStatus;
-  startedAt: string; // yyyy-MM-dd
-  /** null = 무기한(만료 없음) */
-  expiresAt: string | null;
-  /** effectiveGrade 가 허용하는 입력 한도. 수정 폼의 개수 제어 근거 */
-  limits: GradeLimits;
-};
 
 // ===== 옵션(마스터) =====
 
@@ -543,17 +504,6 @@ export type CompanyVerificationRequest = {
   businessStartDate: string;
 };
 
-/**
- * 등급이 허용하는 입력 한도. 폼이 개수를 막는 근거다 — **프론트가 등급→한도 표를 들고 있지 않는다.**
- * videoAllowed=false 여도 서버는 videoUrl 을 거절하지 않는다(공개 조회에서만 가린다). 자물쇠는 화면 몫이다.
- */
-export type GradeLimits = {
-  maxCategories: number;
-  maxDetailImages: number;
-  maxReferenceImages: number;
-  videoAllowed: boolean;
-};
-
 export type CompanyVerificationResponse = {
   verificationId: number;
   /** 정규화된 숫자 10자리(하이픈 없음) */
@@ -561,9 +511,6 @@ export type CompanyVerificationResponse = {
   ceoName: string;
   businessStartDate: string; // yyyy-MM-dd
   expiresAt: string; // ISO LocalDateTime
-  /** 이 인증으로 회사를 만들면 받을 등급(예고) */
-  initialGrade: CompanyGrade;
-  limits: GradeLimits;
 };
 
 export type ContactRequest = {
@@ -593,7 +540,7 @@ export type CertificationRequest = { certificationId: number; customName: string
  */
 /**
  * POST /api/v1/admin/companies — 관리자 등록. 자가등록 본문에서 인증 식별자를 빼고 신원 3종을 직접 싣는다.
- * 국세청 인증을 거치지 않으며, 소유자 미연동 · 구독 ADMIN_EXEMPT(등급 한도 면제)로 만들어진다.
+ * 국세청 인증을 거치지 않으며, 소유자 미연동으로 만들어진다.
  * 사업자번호(숫자 10자리, 하이픈 허용)·개업일자는 선택, 대표자명은 필수.
  */
 export type CompanyCreateRequest = Omit<MyCompanyCreateRequest, "verificationId"> & {

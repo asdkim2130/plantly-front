@@ -20,7 +20,6 @@
  *  - 신원 3종(사업자번호·대표자명·개업일자)을 기본 정보 섹션에서 직접 받는다(대표자명 필수 → 필수 5칸).
  *  - **임시저장이 없다.** 초안은 그 사용자가 국세청 인증을 받은 번호에만 저장된다(CompanyDraftService) —
  *    자동저장·임시저장 버튼·"저장하고 나가기"를 그리지 않고, 나갈 때 작성 내용이 사라진다고 알린다.
- *  - 등급 한도는 인증 결과가 아니라 호출부가 준다(ADMIN_EXEMPT — 한도 면제라 등록 폼 제약의 천장값).
  *  - 발행은 `POST /admin/companies`(소유자 미연동으로 만들어진다).
  */
 
@@ -80,7 +79,7 @@ import {
   type SectionKey,
   type SectionProps,
 } from "@/lib/register";
-import type { CompanyGrade, CompanyVerificationResponse, GradeLimits } from "@/types/api";
+import type { CompanyVerificationResponse } from "@/types/api";
 
 const AUTOSAVE_DELAY_MS = 1200;
 
@@ -132,21 +131,14 @@ type Props = {
   | {
       /** 관리자 등록 — 인증·초안 없이 신원을 직접 받는다(파일 머리 주석) */
       kind: "admin";
-      /** 등급 한도. 관리자 등록은 한도 면제라 등록 폼 제약의 천장값을 넘긴다 */
-      limits: GradeLimits;
     }
 );
-
-/** 관리자 등록 회사의 등급. 구독이 ADMIN_EXEMPT(계약 등급 ENTERPRISE)로 만들어진다 */
-const ADMIN_GRADE: CompanyGrade = "ENTERPRISE";
 
 export default function RegisterForm(props: Props) {
   const { initialForm, masters, reloadMasters, onPublished } = props;
   const router = useRouter();
   const owner = props.kind === "admin" ? null : props;
   const admin = owner === null;
-  const limits = props.kind === "admin" ? props.limits : props.verification.limits;
-  const grade = owner ? owner.verification.initialGrade : ADMIN_GRADE;
   const businessNumber = owner?.verification.businessNumber ?? "";
   const verificationId = owner?.verification.verificationId ?? 0;
   const initialSavedAt = owner?.initialSavedAt ?? null;
@@ -360,7 +352,7 @@ export default function RegisterForm(props: Props) {
         setBanner({ kind: "generic", message: e.message });
       }
     } else {
-      // 등급 한도(CATEGORY_LIMIT_EXCEEDED 등)처럼 화면이 미리 막는 것이 새어 나온 경우 — 서버 문구 그대로.
+      // 개수 상한 초과처럼 화면이 미리 막는 것이 새어 나온 경우 — 서버 문구 그대로.
       setBanner({ kind: "generic", message: e.message });
     }
     if (!e.isUnauthorized) window.scrollTo({ top: 0, behavior: "smooth" });
@@ -409,7 +401,7 @@ export default function RegisterForm(props: Props) {
   const saveHalted = banner?.kind === "savedup" || banner?.kind === "noauth";
 
   // ── 그리기 ──
-  const states = sectionStates(form, limits.videoAllowed, admin);
+  const states = sectionStates(form, admin);
   const done = requiredDone(form, admin);
   const total = requiredTotal(admin);
   const sectionProps: SectionProps = {
@@ -417,8 +409,6 @@ export default function RegisterForm(props: Props) {
     update,
     errors: fieldErrors,
     masters,
-    limits,
-    grade,
     removed,
     identity: admin ? "create" : undefined,
   };
@@ -426,7 +416,7 @@ export default function RegisterForm(props: Props) {
 
   return (
     <div>
-      {/* 따라다니는 머리: 저장 상태 · 필수 n/4 · 발행 / 인증된 신원과 등급 */}
+      {/* 따라다니는 머리: 저장 상태 · 필수 n/4 · 발행 / 인증된 신원 */}
       <div className="sticky top-0 z-20 bg-white shadow-[0_1px_0_var(--color-line)]">
         <div className="flex flex-wrap items-center gap-3.5 px-4 py-3 sm:px-[30px]">
           <div className="mr-auto flex flex-col gap-0.5">
@@ -468,18 +458,10 @@ export default function RegisterForm(props: Props) {
               <ShieldCheckIcon size={13} strokeWidth={1.8} className="text-brand-300" />
               국세청 인증 완료
             </span>
-            <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
-              <span className="tag bg-brand font-heading text-xs tracking-[0.08em] text-white">{grade}</span>
-              <LimitsLine limits={limits} />
-            </div>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-x-[26px] gap-y-2 bg-brand-900 px-4 py-[11px] sm:px-[30px]">
             <span className="text-[13px] text-white/85">국세청 인증 없이 등록합니다 · 소유자 미연동으로 만들어집니다</span>
-            <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
-              <span className="tag bg-brand text-xs text-white">등급 한도 면제</span>
-              <LimitsLine limits={limits} />
-            </div>
           </div>
         )}
       </div>
@@ -657,15 +639,6 @@ export default function RegisterForm(props: Props) {
 }
 
 const STATE_LABEL = { done: "모두 입력", part: "일부 입력", empty: "비어 있음" } as const;
-
-function LimitsLine({ limits }: { limits: GradeLimits }) {
-  return (
-    <span className="text-xs text-white/70">
-      카테고리 {limits.maxCategories} · 상세 이미지 {limits.maxDetailImages}장 · 레퍼런스 이미지 {limits.maxReferenceImages}장 ·
-      동영상 {limits.videoAllowed ? "허용" : "불가"}
-    </span>
-  );
-}
 
 function stillSelected(form: Form, removed: RemovedSelections, item: FormError) {
   const lists: [keyof RemovedSelections, number[]][] = [

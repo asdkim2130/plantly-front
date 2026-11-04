@@ -23,7 +23,7 @@ import type { CompanyDraftResponse, CompanyVerificationResponse } from "@/types/
  * 기업정보 등록(자가등록). 정본은 Claude Design 의 **"플랜틀리 기업정보 등록"**.
  *
  * 한 주소 안에서 세 단계를 갈아 끼운다 — 사업자 인증 → 작성 → 완료. 단계를 주소로 나누지 않은 이유는
- * 작성 단계가 **인증 결과(verificationId·등급 한도) 없이는 그릴 수 없는 화면**이라서다. `/companies/new/form`
+ * 작성 단계가 **인증 결과(verificationId·신원 3종) 없이는 그릴 수 없는 화면**이라서다. `/companies/new/form`
  * 같은 주소로 바로 들어오면 보여 줄 것이 없고, 새로고침 뒤의 복귀는 주소가 아니라 서버 초안이 맡는다
  * (VerifyStep 이 마지막 사업자번호로 초안과 인증을 되찾는다).
  *
@@ -134,7 +134,7 @@ export default function CompanyCreatePage({ searchParams }: PageProps<"/companie
       sectionTotal={SECTIONS.length}
       countFilledSections={(draft: CompanyDraftResponse) =>
         Object.values(
-          sectionStates(fromPayload(draft.payload, etcId), draft.verification?.limits.videoAllowed ?? true),
+          sectionStates(fromPayload(draft.payload, etcId)),
         ).filter((state) => state !== "empty").length
       }
       onStart={(verification, draft) => {

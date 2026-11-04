@@ -13,7 +13,6 @@ import type {
   CompanyVisibility,
   CompanyShowcaseResponse,
   CompanyStatsResponse,
-  CompanySubscriptionResponse,
   CompanyReverificationRequest,
   CompanyReverificationResponse,
   CompanySummary,
@@ -70,11 +69,6 @@ export function getMyFavorites(page = 1, size = 20, signal?: AbortSignal) {
   return api.get<PageResponse<CompanySummary>>("/companies/favorites", { page, size }, signal);
 }
 
-/** 소유자 전용 구독 조회. 등급 표시는 grade 가 아니라 effectiveGrade 를 쓴다. */
-export function getSubscription(companyId: number, signal?: AbortSignal) {
-  return api.get<CompanySubscriptionResponse>(`/companies/${companyId}/subscription`, undefined, signal);
-}
-
 // 좋아요·즐겨찾기는 토글이 아니라 등록(PUT)/해제(DELETE)로 나뉜 멱등 API 다.
 // 응답은 항상 204 — 이미 그 상태여도 성공이므로 중복 클릭을 따로 막을 필요가 없다.
 export const like = (companyId: number) => api.put<void>(`/companies/${companyId}/like`);
@@ -86,7 +80,7 @@ export const unfavorite = (companyId: number) => api.delete<void>(`/companies/${
 // 순서: 사업자 인증 → (초안 이어쓰기) → 작성(자동저장) → 발행. 신원 3종은 인증본에서만 온다.
 
 /**
- * 국세청 사업자 확인. 통과하면 verificationId 와 이 회사가 받을 등급·한도가 온다.
+ * 국세청 사업자 확인. 통과하면 verificationId 와 검증된 신원 3종(사업자번호·대표자명·개업일자)이 온다.
  *
  * 실패는 `ApiError.code` 로 가른다 — 같은 400 이라도 사용자가 고칠 것이 다르다.
  * `VERIFICATION_MISMATCH`(입력 불일치) · `VERIFICATION_NOT_REGISTERED` · `VERIFICATION_SUSPENDED` ·
@@ -141,7 +135,7 @@ export function getMyCompany(id: number, signal?: AbortSignal) {
   return api.get<CompanyDetailResponse>(`/companies/${id}/private`, undefined, signal);
 }
 
-/** 본체 부분 수정. 보낸 키만 바뀐다("" = 비우기). 등급 정책은 바뀐 부분만 다시 본다. */
+/** 본체 부분 수정. 보낸 키만 바뀐다("" = 비우기). */
 export function updateCompany(id: number, patch: CompanyUpdateRequest) {
   return api.patch<void>(`/companies/${id}`, patch);
 }

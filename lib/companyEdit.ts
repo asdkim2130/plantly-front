@@ -49,7 +49,6 @@ export function fromDetail(detail: CompanyDetailResponse): RegisterForm {
     pricingType: profile.pricingType,
     leadTime: text(profile.leadTime),
     asInfo: text(profile.asInfo),
-    // 소유자 뷰는 등급과 무관하게 저장값을 받는다(공개 여부는 meta.videoVisibleToPublic).
     videoUrl: text(profile.videoUrl),
     categoryIds: profile.categories.map((category) => category.id),
     industryIds: profile.industries.map((industry) => industry.id),

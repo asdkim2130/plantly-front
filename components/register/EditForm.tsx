@@ -6,13 +6,12 @@
  * - 섹션마다 "저장 안 된 변경"을 저장값과 견줘 판단하고, 바뀐 섹션 아래에만 저장 줄이 붙는다(SectionFooterContext).
  * - 오류는 그 섹션에 붙는다. 화면 검증은 그 섹션 저장을 한 번 눌렀을 때부터 입력마다 다시 돌고, 서버가 준
  *   위반은 "그때 그 칸의 값"을 들고 있다가 값이 바뀌면 지운다(등록 화면과 같은 방식).
- * - 등급 한도는 구독 조회의 `limits`(실제 유효 등급 기준)에서 온다. 숨겨진 항목(active=false)은 회색으로 그리고,
+ * - 개수 한도는 폼 제약의 maxItems 다(모든 회사에 같다). 숨겨진 항목(active=false)은 회색으로 그리고,
  *   그 컬렉션을 저장하면 서버가 전부 새로 만들어 다시 공개되므로 표시를 지운다.
  * - 대표자명·개업일자는 국세청 인증 회사면 일반 수정이 막혀 있어 남색 띠에 읽기 전용으로 두고 "재인증"으로만 바꾼다.
  *
  * ── 관리자 수정(`admin`) ──
  * 같은 폼을 `/admin/companies/[id]/edit` 가 쓴다. 본문은 같고 저장 경로만 `/admin/companies/…` 다(ADMIN_SAVE_API).
- *  - 등급 한도는 관리자에게도 똑같이 걸린다 — 한도는 행위자가 아니라 회사 구독이 정한다(관리자 구독 응답의 limits).
  *  - 재인증은 없다(소유자가 국세청에 다시 확인받는 길이다). 대신 **국세청 미인증 회사**는 대표자명·개업일자를
  *    기본 정보 섹션에서 직접 고친다 — 관리자 등록 회사가 전부 여기에 해당한다. 인증 회사는 관리자도 못 바꾼다
  *    (서버 가드 VERIFIED_FIELD_NOT_EDITABLE — 인증을 회수해야 열린다).
@@ -61,7 +60,7 @@ import {
   type SectionKey,
   type SectionProps,
 } from "@/lib/register";
-import type { CompanyDetailResponse, CompanySubscriptionResponse } from "@/types/api";
+import type { CompanyDetailResponse } from "@/types/api";
 
 type Notice = { tone: "ok" | "err"; message: string };
 
@@ -69,17 +68,14 @@ type Props = {
   companyId: number;
   detail: CompanyDetailResponse;
   initialForm: Form;
-  /** 소유자용·관리자용 구독 응답이 둘 다 이 세 값을 갖는다 */
-  subscription: Pick<CompanySubscriptionResponse, "effectiveGrade" | "status" | "limits">;
   masters: RegisterMasters;
   /** 관리자 수정(파일 머리 주석) */
   admin?: boolean;
 };
 
-export default function EditForm({ companyId, detail, initialForm, subscription, masters, admin = false }: Props) {
+export default function EditForm({ companyId, detail, initialForm, masters, admin = false }: Props) {
   const router = useRouter();
   const etcId = findEtcCertificationId(masters.certifications);
-  const limits = subscription.limits;
   const saveApi = admin ? ADMIN_SAVE_API : undefined;
   const editPath = admin ? `/admin/companies/${companyId}/edit` : `/companies/${companyId}/edit`;
   // 관리자가 국세청 미인증 회사의 대표자명·개업일자를 기본 정보 섹션에서 직접 고치는가
@@ -198,7 +194,7 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
           // 칸으로 옮기지 못한 위반(모르는 경로)만 남으면 문구라도 보여 준다.
           if (mapped.length === 0) setNotice(key, { tone: "err", message: e.message });
         } else {
-          // 등급 한도(CATEGORY_LIMIT_EXCEEDED 등) · 사라진 선택지(*_NOT_FOUND) · 권한 — 서버 문구 그대로.
+          // 개수 상한 초과 · 사라진 선택지(*_NOT_FOUND) · 권한 — 서버 문구 그대로.
           setNotice(key, {
             tone: "err",
             message: e instanceof ApiError ? e.message : "저장 요청을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.",
@@ -302,8 +298,6 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
     update,
     errors: fieldErrors,
     masters,
-    limits,
-    grade: subscription.effectiveGrade,
     removed: {},
     mode: "edit",
     hidden,
@@ -387,16 +381,6 @@ export default function EditForm({ companyId, detail, initialForm, subscription,
             </>
           )}
           {identityEditable && <span className="text-xs text-white/60">국세청 미인증 · 신원은 기본 정보에서 고칩니다</span>}
-          <div className="flex flex-wrap items-center gap-3 lg:ml-auto">
-            <span className="tag bg-brand font-heading text-xs tracking-[0.08em] text-white">
-              {subscription.effectiveGrade}
-              {subscription.status === "ADMIN_EXEMPT" && " · 한도 면제"}
-            </span>
-            <span className="text-xs text-white/70">
-              카테고리 {limits.maxCategories} · 상세 이미지 {limits.maxDetailImages}장 · 레퍼런스 이미지{" "}
-              {limits.maxReferenceImages}장 · 동영상 {limits.videoAllowed ? "허용" : "불가"}
-            </span>
-          </div>
         </div>
       </div>
 

@@ -7,16 +7,16 @@ import { useSession } from "@/components/SessionProvider";
 import EditForm from "@/components/register/EditForm";
 import { ApiError } from "@/lib/api";
 import { fromDetail } from "@/lib/companyEdit";
-import { getMyCompany, getSubscription } from "@/lib/companies";
+import { getMyCompany } from "@/lib/companies";
 import { loadRegisterMasters } from "@/lib/registerMasters";
 import type { RegisterMasters } from "@/lib/register";
-import type { CompanyDetailResponse, CompanySubscriptionResponse } from "@/types/api";
+import type { CompanyDetailResponse } from "@/types/api";
 
 /**
  * 기업정보 수정(소유자). 등록 화면의 섹션을 그대로 쓰고 저장만 섹션별로 한다 — `components/register/EditForm.tsx`.
  *
- * 세 가지를 함께 받는다: 소유자 상세(`/private`, 숨겨진 항목·우편번호·레퍼런스 이미지 전부 포함),
- * 구독(실제 유효 등급의 한도), 폼 재료(선택지·제약). 소유자가 아니면 서버가 403 을 준다.
+ * 두 가지를 함께 받는다: 소유자 상세(`/private`, 숨겨진 항목·우편번호·레퍼런스 이미지 전부 포함),
+ * 폼 재료(선택지·제약 — 개수 한도도 여기서 온다). 소유자가 아니면 서버가 403 을 준다.
  */
 export default function CompanyEditPage({ params }: PageProps<"/companies/[id]/edit">) {
   const { id } = use(params);
@@ -28,7 +28,6 @@ export default function CompanyEditPage({ params }: PageProps<"/companies/[id]/e
 
   const [data, setData] = useState<{
     detail: CompanyDetailResponse;
-    subscription: CompanySubscriptionResponse;
     masters: RegisterMasters;
   } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -43,11 +42,10 @@ export default function CompanyEditPage({ params }: PageProps<"/companies/[id]/e
     const controller = new AbortController();
     Promise.all([
       getMyCompany(companyId, controller.signal),
-      getSubscription(companyId, controller.signal),
       // 컬렉션 개수는 등록 폼 제약, 본체 칸은 수정 폼 제약으로 덮는다(registerMasters 주석).
       loadRegisterMasters(["my-company-create", "company-update"], controller.signal),
     ]).then(
-      ([detail, subscription, masters]) => setData({ detail, subscription, masters }),
+      ([detail, masters]) => setData({ detail, masters }),
       (e) => {
         if (controller.signal.aborted) return;
         if (e instanceof ApiError && e.isForbidden) setFailure("이 회사를 수정할 권한이 없습니다.");
@@ -85,7 +83,6 @@ export default function CompanyEditPage({ params }: PageProps<"/companies/[id]/e
       companyId={companyId}
       detail={data.detail}
       initialForm={fromDetail(data.detail)}
-      subscription={data.subscription}
       masters={data.masters}
     />
   );

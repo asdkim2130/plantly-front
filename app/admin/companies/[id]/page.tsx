@@ -5,22 +5,20 @@ import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import CompanyDetailView, { DetailSkeleton, externalHref } from "@/components/CompanyDetailView";
 import DetailLink from "@/components/DetailLink";
-import GradeLabel from "@/components/GradeLabel";
 import { useSession } from "@/components/SessionProvider";
 import { EyeOffIcon, PencilIcon, StarIcon, TrashIcon } from "@/components/icons";
 import { ApiError } from "@/lib/api";
-import { getAdminCompany, getAdminSubscription } from "@/lib/admin";
+import { getAdminCompany } from "@/lib/admin";
 import { formatBusinessNumber, formatDate, relativeTime } from "@/lib/register";
-import type { AdminCompanySubscriptionResponse, CompanyDetailResponse } from "@/types/api";
+import type { CompanyDetailResponse } from "@/types/api";
 
 type Loaded = {
   id: number;
   detail: CompanyDetailResponse;
-  subscription: AdminCompanySubscriptionResponse;
 };
 
 /**
- * 기업 상세(관리자) — `GET /admin/companies/{id}` + `GET /admin/companies/{id}/subscription`.
+ * 기업 상세(관리자) — `GET /admin/companies/{id}`.
  *
  * 소유자 상세(`/companies/[id]/manage`)와 같은 몸통(`CompanyDetailView`)에 같은 응답 모양(profile + meta)을 넘긴다.
  * 소유자 상세를 관리자에게 열지 않은 이유: 그 화면은 소유자 API(`/private`)를 써서 멤버가 아니면 403 이다.
@@ -29,7 +27,7 @@ type Loaded = {
  * 소유자 상세와 다른 자리:
  *  - 히어로 위 띠: 삭제됨 · 공개 상태 · 등록 출처 · 소유자 연동 · 등록일 · 최근 수정
  *  - 히어로 버튼: 기업정보 수정(관리자 수정 화면) · 공개 페이지 보기(공개이고 삭제되지 않았을 때만) · 웹사이트 · 목록으로.
- *  - 사이드바 "운영 정보": 사업자번호 · 국세청 인증 · 등급(구독). 관리자 구독 응답에는 한도(limits)가 없어 한도 줄은 없다.
+ *  - 사이드바 "운영 정보": 사업자번호 · 국세청 인증.
  *
  * 추천·스팟라이트 켜고 끄기는 목록 카드에서 한다(클라이언트 요구가 "목록에서 바로").
  */
@@ -54,8 +52,8 @@ export default function AdminCompanyDetailPage({ params }: PageProps<"/admin/com
   useEffect(() => {
     if (!isAdmin || !valid) return;
     const controller = new AbortController();
-    Promise.all([getAdminCompany(companyId, controller.signal), getAdminSubscription(companyId, controller.signal)]).then(
-      ([detail, subscription]) => setLoaded({ id: companyId, detail, subscription }),
+    getAdminCompany(companyId, controller.signal).then(
+      (detail) => setLoaded({ id: companyId, detail }),
       (e) => {
         if (controller.signal.aborted) return;
         if (e instanceof ApiError && e.isNotFound) setFailure("존재하지 않는 회사입니다.");
@@ -88,7 +86,7 @@ export default function AdminCompanyDetailPage({ params }: PageProps<"/admin/com
 
   if (!current) return <DetailSkeleton />;
 
-  const { detail, subscription } = current;
+  const { detail } = current;
   const { profile: company, meta } = detail;
   const isPublic = meta.visibility !== "PRIVATE";
   const hasPublicPage = isPublic && !meta.deleted;
@@ -193,8 +191,8 @@ export default function AdminCompanyDetailPage({ params }: PageProps<"/admin/com
       notice={
         hiddenParts.length > 0 && (
           <>
-            공개되지 않는 항목이 있습니다 — {hiddenParts.join(" · ")}. 현재 등급({subscription.effectiveGrade}) 한도를
-            넘어 저장만 돼 있고 방문자에게는 보이지 않습니다(아래 회색 표시).
+            공개되지 않는 항목이 있습니다 — {hiddenParts.join(" · ")}. 저장만 돼 있고 방문자에게는 보이지
+            않습니다(아래 회색 표시). 수정 화면에서 그 섹션을 다시 저장하면 공개됩니다.
           </>
         )
       }
@@ -220,16 +218,6 @@ export default function AdminCompanyDetailPage({ params }: PageProps<"/admin/com
                     : "인증 완료"
                   : "미인증"}
               </span>
-            </div>
-            <div className="srow">
-              <span className="skey">등급</span>
-              <span className="sval">
-                <GradeLabel subscription={subscription} />
-              </span>
-            </div>
-            <div className="srow">
-              <span className="skey">구독 시작</span>
-              <span className="sval">{subscription.startedAt}</span>
             </div>
           </div>
         </div>

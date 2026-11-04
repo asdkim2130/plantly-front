@@ -15,11 +15,9 @@ import type {
   CategoryPublicResponse,
   CertificationPublicResponse,
   CertificationRequest,
-  CompanyGrade,
   CompanyVisibility,
   CountryPublicResponse,
   DomesticRegionPublicResponse,
-  GradeLimits,
   IndustryPublicResponse,
   CompanyCreateRequest,
   MyCompanyCreateRequest,
@@ -54,9 +52,6 @@ export type SectionProps = {
   /** 칸 키 → 오류 문구(errorMap) */
   errors: Record<string, string>;
   masters: RegisterMasters;
-  limits: GradeLimits;
-  /** 이 인증으로 받을 등급(예고). 등급이 막은 칸의 안내 문구에 쓴다 */
-  grade: CompanyGrade;
   /** 선택지 목록에서 사라져 발행을 막은 항목(칸 키 → id → 이름). 칩을 빨간 줄로 그린다 */
   removed: RemovedSelections;
   /**
@@ -368,7 +363,7 @@ export const sectionId = (key: SectionKey) => `sec-${key}`;
 export type FillState = "done" | "part" | "empty";
 
 /** 칸 몇 개가 찼는지로 섹션의 채움 상태를 낸다(목차의 동그라미, 이어쓰기 카드의 "n개 섹션 작성"). */
-export function sectionStates(form: RegisterForm, videoAllowed: boolean, identity = false): Record<SectionKey, FillState> {
+export function sectionStates(form: RegisterForm, identity = false): Record<SectionKey, FillState> {
   const of = (...filled: boolean[]): FillState => {
     const count = filled.filter(Boolean).length;
     return count === 0 ? "empty" : count === filled.length ? "done" : "part";
@@ -392,8 +387,7 @@ export function sectionStates(form: RegisterForm, videoAllowed: boolean, identit
       form.pricingType !== null,
       has(form.leadTime),
       has(form.asInfo),
-      // 등급이 막은 칸은 "비었다"로 세지 않는다 — 채울 수 없는 칸 때문에 영영 '일부 입력'이 된다.
-      ...(videoAllowed ? [has(form.videoUrl)] : []),
+      has(form.videoUrl),
     ),
     E: of(form.categoryIds.length > 0, form.industryIds.length > 0, form.tagNames.length > 0),
     F: of(

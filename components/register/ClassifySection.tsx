@@ -5,7 +5,7 @@
  *
  * 카테고리는 대·중·소 어느 단계든 고를 수 있다. 검색 패싯이 **후손 서브트리까지** 잡으므로 대분류만
  * 골라도 그 아래 회사로 검색된다 — 그래서 상위를 골라도 하위를 따라 켜지 않는다(목록 화면과 같은 판단).
- * 개수 한도는 등급이 정하고(limits.maxCategories) 인증 응답이 알려 준다.
+ * 개수 한도는 폼 제약의 maxItems 다(모든 회사에 같다).
  */
 
 import { useMemo, useState } from "react";
@@ -28,7 +28,7 @@ function indexCategories(roots: CategoryPublicResponse[]) {
   return index;
 }
 
-export default function ClassifySection({ form, update, errors, masters, limits, removed, hidden }: SectionProps) {
+export default function ClassifySection({ form, update, errors, masters, removed, hidden }: SectionProps) {
   const roots = masters.categories;
   const index = useMemo(() => indexCategories(roots), [roots]);
 
@@ -39,13 +39,15 @@ export default function ClassifySection({ form, update, errors, masters, limits,
   const mid = major?.children.find((node) => node.id === midId) ?? major?.children[0];
 
   const selected = form.categoryIds;
-  const full = selected.length >= limits.maxCategories;
+  // 제약을 못 받았으면 화면은 막지 않는다(서버가 판정한다).
+  const maxCategories = ruleValue(masters.constraints, "categoryIds", "maxItems");
+  const full = maxCategories !== undefined && selected.length >= maxCategories;
 
   function toggle(id: number) {
     update((f) =>
       f.categoryIds.includes(id)
         ? { categoryIds: f.categoryIds.filter((x) => x !== id) }
-        : f.categoryIds.length < limits.maxCategories
+        : maxCategories === undefined || f.categoryIds.length < maxCategories
           ? { categoryIds: [...f.categoryIds, id] }
           : {},
     );
@@ -90,7 +92,7 @@ export default function ClassifySection({ form, update, errors, masters, limits,
   return (
     <Section id={sectionId("E")} letter="E" title="분류" sub="검색 필터 · 분류와 업종에 쓰입니다">
       <div className="flex flex-col gap-1.5">
-        <FieldHead label="카테고리" count={selected.length} max={limits.maxCategories} />
+        <FieldHead label="카테고리" count={selected.length} max={maxCategories} />
         <p className="fhint">
           대분류, 중분류, 소분류 중 원하는 단계까지 선택할 수 있습니다. 카테고리명을 클릭하면 하위 분류가
           표시되며, 소분류까지 선택하지 않아도 됩니다.
@@ -116,13 +118,12 @@ export default function ClassifySection({ form, update, errors, masters, limits,
         </div>
         {hidden && selected.some((id) => hidden.categoryIds.has(id)) && (
           <span className="fhint">
-            “비공개” 표시는 저장돼 있지만 현재 등급 한도를 넘겨 공개되지 않는 항목입니다. 한도 안으로 줄이면 다시
-            공개됩니다.
+            “비공개” 표시는 저장돼 있지만 공개되지 않는 항목입니다. 이 섹션을 다시 저장하면 모두 공개됩니다.
           </span>
         )}
         {full && (
           <span className="fhint text-brand-700">
-            최대 {limits.maxCategories}개까지 선택할 수 있습니다. 다른 항목을 선택하려면 기존 항목 중 하나를
+            최대 {maxCategories}개까지 선택할 수 있습니다. 다른 항목을 선택하려면 기존 항목 중 하나를
             삭제해 주세요.
           </span>
         )}
